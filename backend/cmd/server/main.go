@@ -5,6 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
+	auditlogHandler "github.com/clinova/simrs/backend/internal/auditlog/handler"
 	"github.com/clinova/simrs/backend/internal/auth/handler"
 	"github.com/clinova/simrs/backend/internal/auth/handler/middleware"
 	"github.com/clinova/simrs/backend/internal/auth/repository"
@@ -68,6 +69,10 @@ func main() {
 	usermgmtRouter := usermgmtHandler.NewRouter(db, auditLogger, passwordHasher, jwtMiddleware, permMiddleware)
 	usermgmtRouter.RegisterRoutes(authRouter.GetEngine(), permissionService)
 
+	// Initialize audit log router
+	auditlogRouter := auditlogHandler.NewRouter(auditLogPath, jwtMiddleware, permMiddleware)
+	auditlogRouter.RegisterRoutes(authRouter.GetEngine())
+
 	// Start server
 	addr := ":" + cfg.Server.Port
 	log.Printf("Starting SIMRS Auth Service on %s", addr)
@@ -88,6 +93,9 @@ func main() {
 	log.Println("    PUT/DEL   /admin/roles/:id")
 	log.Println("  Permission Management:")
 	log.Println("    GET/POST  /admin/permissions")
+	log.Println("  Audit Logs:")
+	log.Println("    GET       /admin/audit-logs")
+	log.Println("    GET       /admin/audit-logs/:id")
 
 	if err := authRouter.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

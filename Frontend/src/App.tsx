@@ -21,6 +21,7 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import AuditLogs from "./pages/AuditLogs";
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
             <Route path="/sessions" element={<Sessions />} />
+            <Route path="/audit-logs" element={<AuditLogs />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

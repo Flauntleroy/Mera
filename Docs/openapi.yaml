@@ -1,15 +1,21 @@
 openapi: 3.0.3
 info:
-  title: SIMRS Authentication API
+  title: SIMRS API
   description: |
-    REST API untuk autentikasi dan manajemen sesi SIMRS.
+    REST API untuk SIMRS (Sistem Informasi Manajemen Rumah Sakit).
     
     ## Authentication
     Protected endpoints membutuhkan header:
     ```
     Authorization: Bearer <access_token>
     ```
-  version: 1.0.0
+    
+    ## Permissions
+    Admin endpoints membutuhkan permission tertentu:
+    - `usermanagement.read` - View users, roles, permissions
+    - `usermanagement.write` - Create, update, delete users/roles
+    - `auditlog.read` - View audit logs
+  version: 1.1.0
   contact:
     name: SIMRS Team
     
@@ -22,6 +28,14 @@ tags:
     description: Login, logout, refresh token
   - name: Session
     description: Session management
+  - name: User Management
+    description: Manage users (Admin only)
+  - name: Role Management
+    description: Manage roles and permissions (Admin only)
+  - name: Permission Management
+    description: Manage permissions (Admin only)
+  - name: Audit Log
+    description: View audit logs (Admin only)
 
 paths:
   /auth/login:
@@ -188,6 +202,472 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # User Management
+  /admin/users:
+    get:
+      tags:
+        - User Management
+      summary: List users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - User Management
+      summary: Create user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /admin/users/{id}:
+    get:
+      tags:
+        - User Management
+      summary: Get user detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - User Management
+      summary: Update user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated
+    delete:
+      tags:
+        - User Management
+      summary: Delete user (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deleted
+
+  /admin/users/{id}/roles:
+    put:
+      tags:
+        - User Management
+      summary: Assign roles to user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRolesRequest'
+      responses:
+        '200':
+          description: Roles assigned
+
+  /admin/users/{id}/permissions:
+    put:
+      tags:
+        - User Management
+      summary: Assign permission overrides to user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignPermissionsRequest'
+      responses:
+        '200':
+          description: Permission overrides assigned
+
+  /admin/users/{id}/copy-access:
+    post:
+      tags:
+        - User Management
+      summary: Copy access from another user
+      description: Copy roles and permission overrides from source user to target user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Target user ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyAccessRequest'
+      responses:
+        '200':
+          description: Access copied
+
+  /admin/users/{id}/reset-password:
+    post:
+      tags:
+        - User Management
+      summary: Reset user password
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_password:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: Password reset
+
+  # Role Management
+  /admin/roles:
+    get:
+      tags:
+        - Role Management
+      summary: List roles
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Role list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleListResponse'
+    post:
+      tags:
+        - Role Management
+      summary: Create role
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '200':
+          description: Role created
+
+  /admin/roles/{id}:
+    get:
+      tags:
+        - Role Management
+      summary: Get role detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Role detail
+    put:
+      tags:
+        - Role Management
+      summary: Update role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
+          description: Role updated
+    delete:
+      tags:
+        - Role Management
+      summary: Delete role
+      description: Cannot delete system roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Role deleted
+        '400':
+          description: System role cannot be deleted
+
+  /admin/roles/{id}/permissions:
+    put:
+      tags:
+        - Role Management
+      summary: Assign permissions to role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permission_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Permissions assigned
+
+  # Permission Management
+  /admin/permissions:
+    get:
+      tags:
+        - Permission Management
+      summary: List permissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+          description: Filter by domain
+      responses:
+        '200':
+          description: Permission list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionListResponse'
+    post:
+      tags:
+        - Permission Management
+      summary: Create permission
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePermissionRequest'
+      responses:
+        '200':
+          description: Permission created
+
+  # Audit Log
+  /admin/audit-logs:
+    get:
+      tags:
+        - Audit Log
+      summary: List audit logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+        - name: module
+          in: query
+          schema:
+            type: string
+          description: Filter by module
+        - name: user
+          in: query
+          schema:
+            type: string
+          description: Filter by username
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [INSERT, UPDATE, DELETE]
+        - name: business_key
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+      responses:
+        '200':
+          description: Audit log list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+
+  /admin/audit-logs/{id}:
+    get:
+      tags:
+        - Audit Log
+      summary: Get audit log detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit log detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogDetailResponse'
+
+  /admin/audit-logs/modules:
+    get:
+      tags:
+        - Audit Log
+      summary: Get available modules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Module list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: string
+                    example: [auth, usermanagement, farmasi, billing]
+
 components:
   securitySchemes:
     bearerAuth:
@@ -198,6 +678,24 @@ components:
   responses:
     Unauthorized:
       description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
       content:
         application/json:
           schema:
@@ -298,17 +796,14 @@ components:
         id:
           type: string
           format: uuid
-          example: 550e8400-e29b-41d4-a716-446655440001
         username:
           type: string
           example: admin
         email:
           type: string
           format: email
-          example: admin@hospital.com
         is_active:
           type: boolean
-          example: true
         last_login_at:
           type: string
           format: date-time
@@ -316,17 +811,14 @@ components:
         roles:
           type: array
           items:
-            $ref: '#/components/schemas/Role'
+            $ref: '#/components/schemas/RoleBrief'
         permissions:
           type: array
           items:
             type: string
-          example:
-            - patient.read
-            - patient.create
-            - billing.read
+          example: [patient.read, billing.read]
 
-    Role:
+    RoleBrief:
       type: object
       properties:
         id:
@@ -341,10 +833,8 @@ components:
       properties:
         access_token:
           type: string
-          description: JWT access token (15 min expiry)
         refresh_token:
           type: string
-          description: JWT refresh token (7 day expiry)
         token_type:
           type: string
           example: Bearer
@@ -360,10 +850,8 @@ components:
           format: uuid
         device_info:
           type: string
-          example: Mozilla/5.0 (Windows NT 10.0...)
         ip_address:
           type: string
-          example: 192.168.1.100
         created_at:
           type: string
           format: date-time
@@ -372,14 +860,319 @@ components:
           format: date-time
         is_current:
           type: boolean
-          description: True if this is the requesting session
         is_active:
           type: boolean
-          description: True if not revoked
         revoked_at:
           type: string
           format: date-time
           nullable: true
+
+    # User Management Schemas
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        is_active:
+          type: boolean
+          default: true
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
+
+    UserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+            total:
+              type: integer
+            page:
+              type: integer
+            limit:
+              type: integer
+
+    UserDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          allOf:
+            - $ref: '#/components/schemas/User'
+            - type: object
+              properties:
+                permission_overrides:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PermissionOverride'
+
+    AssignRolesRequest:
+      type: object
+      required:
+        - role_ids
+      properties:
+        role_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AssignPermissionsRequest:
+      type: object
+      required:
+        - overrides
+      properties:
+        overrides:
+          type: array
+          items:
+            type: object
+            properties:
+              permission_id:
+                type: string
+                format: uuid
+              effect:
+                type: string
+                enum: [grant, revoke]
+
+    CopyAccessRequest:
+      type: object
+      required:
+        - source_user_id
+      properties:
+        source_user_id:
+          type: string
+          format: uuid
+
+    PermissionOverride:
+      type: object
+      properties:
+        permission_id:
+          type: string
+          format: uuid
+        permission_code:
+          type: string
+        effect:
+          type: string
+          enum: [grant, revoke]
+
+    # Role Management Schemas
+    CreateRoleRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+        description:
+          type: string
+
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+        description:
+          type: string
+
+    RoleListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            roles:
+              type: array
+              items:
+                $ref: '#/components/schemas/Role'
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_system:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionBrief'
+
+    PermissionBrief:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+
+    # Permission Management Schemas
+    CreatePermissionRequest:
+      type: object
+      required:
+        - code
+        - domain
+        - action
+      properties:
+        code:
+          type: string
+          example: billing.refund.approve
+        domain:
+          type: string
+          example: billing
+        action:
+          type: string
+          example: refund.approve
+        description:
+          type: string
+
+    PermissionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            permissions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Permission'
+
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        domain:
+          type: string
+        action:
+          type: string
+        description:
+          type: string
+
+    # Audit Log Schemas
+    AuditLogListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            logs:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditLogEntry'
+            total:
+              type: integer
+            page:
+              type: integer
+            limit:
+              type: integer
+
+    AuditLogDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AuditLogEntry'
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        ts:
+          type: string
+          format: date-time
+        level:
+          type: string
+        module:
+          type: string
+        action:
+          type: string
+          enum: [INSERT, UPDATE, DELETE]
+        entity:
+          type: object
+          properties:
+            table:
+              type: string
+            primary_key:
+              type: object
+              additionalProperties:
+                type: string
+        sql_context:
+          type: object
+          properties:
+            operation:
+              type: string
+            changed_columns:
+              type: object
+            inserted_data:
+              type: object
+            deleted_data:
+              type: object
+            where:
+              type: object
+        business_key:
+          type: string
+        actor:
+          type: object
+          properties:
+            user_id:
+              type: string
+            username:
+              type: string
+        ip:
+          type: string
+        summary:
+          type: string
 
     ErrorResponse:
       type: object
@@ -396,6 +1189,12 @@ components:
                 - INVALID_CREDENTIALS
                 - USER_NOT_FOUND
                 - USER_INACTIVE
+                - USER_EXISTS
+                - ROLE_EXISTS
+                - ROLE_NOT_FOUND
+                - SYSTEM_ROLE
+                - PERMISSION_EXISTS
+                - PERMISSION_NOT_FOUND
                 - INVALID_TOKEN
                 - EXPIRED_TOKEN
                 - SESSION_REVOKED
@@ -404,3 +1203,4 @@ components:
                 - INTERNAL_ERROR
             message:
               type: string
+
