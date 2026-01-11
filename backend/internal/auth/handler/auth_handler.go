@@ -25,7 +25,7 @@ func NewAuthHandler(authSvc *service.AuthService, sessionSvc *service.SessionSer
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, response.ErrCodeValidationError, "Invalid request body")
+		response.BadRequest(c, response.ErrCodeValidationError, "Format data tidak valid")
 		return
 	}
 
@@ -40,11 +40,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCredentials):
-			response.Unauthorized(c, response.ErrCodeInvalidCredentials, "Invalid username or password")
+			response.Unauthorized(c, response.ErrCodeInvalidCredentials, "Username atau password salah")
 		case errors.Is(err, service.ErrUserInactive):
-			response.Unauthorized(c, response.ErrCodeUserInactive, "User account is inactive")
+			response.Unauthorized(c, response.ErrCodeUserInactive, "Akun pengguna tidak aktif")
 		default:
-			response.InternalServerError(c, "Login failed")
+			response.InternalServerError(c, "Gagal login")
 		}
 		return
 	}
@@ -78,20 +78,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	sessionID := middleware.GetSessionID(c)
 	if sessionID == "" {
-		response.Unauthorized(c, response.ErrCodeInvalidToken, "No active session")
+		response.Unauthorized(c, response.ErrCodeInvalidToken, "Tidak ada sesi aktif")
 		return
 	}
 	if err := h.authService.Logout(c.Request.Context(), sessionID); err != nil {
-		response.InternalServerError(c, "Logout failed")
+		response.InternalServerError(c, "Gagal logout")
 		return
 	}
-	response.SuccessWithMessage(c, "Successfully logged out", nil)
+	response.SuccessWithMessage(c, "Berhasil logout", nil)
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, response.ErrCodeValidationError, "Invalid request body")
+		response.BadRequest(c, response.ErrCodeValidationError, "Format data tidak valid")
 		return
 	}
 
@@ -99,13 +99,13 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidRefreshToken):
-			response.Unauthorized(c, response.ErrCodeInvalidToken, "Invalid refresh token")
+			response.Unauthorized(c, response.ErrCodeInvalidToken, "Refresh token tidak valid")
 		case errors.Is(err, service.ErrSessionRevoked):
-			response.Unauthorized(c, response.ErrCodeSessionRevoked, "Session has been revoked")
+			response.Unauthorized(c, response.ErrCodeSessionRevoked, "Sesi telah dibatalkan")
 		case errors.Is(err, service.ErrUserInactive):
-			response.Unauthorized(c, response.ErrCodeUserInactive, "User account is inactive")
+			response.Unauthorized(c, response.ErrCodeUserInactive, "Akun pengguna tidak aktif")
 		default:
-			response.InternalServerError(c, "Token refresh failed")
+			response.InternalServerError(c, "Gagal refresh token")
 		}
 		return
 	}
@@ -124,7 +124,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	if userID == "" {
-		response.Unauthorized(c, response.ErrCodeInvalidToken, "Not authenticated")
+		response.Unauthorized(c, response.ErrCodeInvalidToken, "Belum terautentikasi")
 		return
 	}
 
@@ -132,9 +132,9 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	user, err := h.permissionService.GetUserWithPermissions(c.Request.Context(), cache, userID)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
-			response.NotFound(c, "User not found")
+			response.NotFound(c, "Pengguna tidak ditemukan")
 		} else {
-			response.InternalServerError(c, "Failed to get user information")
+			response.InternalServerError(c, "Gagal mengambil informasi pengguna")
 		}
 		return
 	}
@@ -164,7 +164,7 @@ func (h *AuthHandler) GetSessions(c *gin.Context) {
 
 	sessions, err := h.sessionService.GetUserSessions(c.Request.Context(), userID)
 	if err != nil {
-		response.InternalServerError(c, "Failed to get sessions")
+		response.InternalServerError(c, "Gagal mengambil daftar sesi")
 		return
 	}
 
@@ -189,7 +189,7 @@ func (h *AuthHandler) GetSessions(c *gin.Context) {
 func (h *AuthHandler) RevokeSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	if sessionID == "" {
-		response.BadRequest(c, response.ErrCodeValidationError, "Session ID is required")
+		response.BadRequest(c, response.ErrCodeValidationError, "ID sesi wajib diisi")
 		return
 	}
 
@@ -201,11 +201,11 @@ func (h *AuthHandler) RevokeSession(c *gin.Context) {
 	err := h.sessionService.RevokeSession(c.Request.Context(), userID, sessionID, isAdmin)
 	if err != nil {
 		if errors.Is(err, service.ErrSessionNotFound) {
-			response.NotFound(c, "Session not found")
+			response.NotFound(c, "Sesi tidak ditemukan")
 		} else {
-			response.InternalServerError(c, "Failed to revoke session")
+			response.InternalServerError(c, "Gagal membatalkan sesi")
 		}
 		return
 	}
-	response.SuccessWithMessage(c, "Session revoked successfully", nil)
+	response.SuccessWithMessage(c, "Sesi berhasil dibatalkan", nil)
 }

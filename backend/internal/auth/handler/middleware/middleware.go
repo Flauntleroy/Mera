@@ -2,7 +2,10 @@
 package middleware
 
 import (
+	"context"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,6 +20,31 @@ const (
 	ContextKeyPermCache = "permission_cache"
 )
 
+// lastSeenThrottle prevents excessive DB updates for last_seen_at
+// only update once per minute per session
+type lastSeenThrottle struct {
+	mu       sync.RWMutex
+	lastSeen map[string]time.Time
+}
+
+var throttle = &lastSeenThrottle{
+	lastSeen: make(map[string]time.Time),
+}
+
+func (t *lastSeenThrottle) shouldUpdate(sessionID string) bool {
+	t.mu.RLock()
+	last, exists := t.lastSeen[sessionID]
+	t.mu.RUnlock()
+
+	if !exists || time.Since(last) > time.Minute {
+		t.mu.Lock()
+		t.lastSeen[sessionID] = time.Now()
+		t.mu.Unlock()
+		return true
+	}
+	return false
+}
+
 type JWTMiddleware struct {
 	jwtManager     *jwt.Manager
 	sessionService *service.SessionService
@@ -30,14 +58,14 @@ func (m *JWTMiddleware) Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			response.Unauthorized(c, response.ErrCodeInvalidToken, "Missing authorization header")
+			response.Unauthorized(c, response.ErrCodeInvalidToken, "Header otorisasi tidak ditemukan")
 			c.Abort()
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			response.Unauthorized(c, response.ErrCodeInvalidToken, "Invalid authorization header format")
+			response.Unauthorized(c, response.ErrCodeInvalidToken, "Format header otorisasi tidak valid")
 			c.Abort()
 			return
 		}
@@ -45,9 +73,9 @@ func (m *JWTMiddleware) Authenticate() gin.HandlerFunc {
 		claims, err := m.jwtManager.ValidateAccessToken(parts[1])
 		if err != nil {
 			if err == jwt.ErrExpiredToken {
-				response.Unauthorized(c, response.ErrCodeExpiredToken, "Token has expired")
+				response.Unauthorized(c, response.ErrCodeExpiredToken, "Token telah kedaluwarsa")
 			} else {
-				response.Unauthorized(c, response.ErrCodeInvalidToken, "Invalid token")
+				response.Unauthorized(c, response.ErrCodeInvalidToken, "Token tidak valid")
 			}
 			c.Abort()
 			return
@@ -55,12 +83,20 @@ func (m *JWTMiddleware) Authenticate() gin.HandlerFunc {
 
 		session, err := m.sessionService.GetSessionByID(c.Request.Context(), claims.SessionID)
 		if err != nil || session == nil || !session.IsActive() {
-			response.Unauthorized(c, response.ErrCodeSessionRevoked, "Session has been revoked")
+			response.Unauthorized(c, response.ErrCodeSessionRevoked, "Sesi telah dibatalkan")
 			c.Abort()
 			return
 		}
 
-		go m.sessionService.UpdateSessionActivity(c.Request.Context(), claims.SessionID)
+		// Update last_seen_at with throttling (max once per minute per session)
+		// Use background context since request context will be cancelled after response
+		if throttle.shouldUpdate(claims.SessionID) {
+			go func(sessionID string) {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				m.sessionService.UpdateSessionActivity(ctx, sessionID)
+			}(claims.SessionID)
+		}
 
 		c.Set(ContextKeyUserID, claims.UserID)
 		c.Set(ContextKeySessionID, claims.SessionID)
@@ -103,7 +139,7 @@ func (m *PermissionMiddleware) RequirePermission(permissionCode string) gin.Hand
 	return func(c *gin.Context) {
 		userID := GetUserID(c)
 		if userID == "" {
-			response.Unauthorized(c, response.ErrCodeInvalidToken, "Authentication required")
+			response.Unauthorized(c, response.ErrCodeInvalidToken, "Autentikasi diperlukan")
 			c.Abort()
 			return
 		}
@@ -116,12 +152,12 @@ func (m *PermissionMiddleware) RequirePermission(permissionCode string) gin.Hand
 
 		has, err := m.permissionService.HasPermission(c.Request.Context(), cache, userID, permissionCode)
 		if err != nil {
-			response.InternalServerError(c, "Failed to check permissions")
+			response.InternalServerError(c, "Gagal memeriksa izin")
 			c.Abort()
 			return
 		}
 		if !has {
-			response.Forbidden(c, "Permission denied")
+			response.Forbidden(c, "Akses ditolak")
 			c.Abort()
 			return
 		}
@@ -134,7 +170,7 @@ func (m *PermissionMiddleware) RequireAnyPermission(codes ...string) gin.Handler
 	return func(c *gin.Context) {
 		userID := GetUserID(c)
 		if userID == "" {
-			response.Unauthorized(c, response.ErrCodeInvalidToken, "Authentication required")
+			response.Unauthorized(c, response.ErrCodeInvalidToken, "Autentikasi diperlukan")
 			c.Abort()
 			return
 		}
@@ -147,12 +183,12 @@ func (m *PermissionMiddleware) RequireAnyPermission(codes ...string) gin.Handler
 
 		has, err := m.permissionService.HasAnyPermission(c.Request.Context(), cache, userID, codes)
 		if err != nil {
-			response.InternalServerError(c, "Failed to check permissions")
+			response.InternalServerError(c, "Gagal memeriksa izin")
 			c.Abort()
 			return
 		}
 		if !has {
-			response.Forbidden(c, "Permission denied")
+			response.Forbidden(c, "Akses ditolak")
 			c.Abort()
 			return
 		}

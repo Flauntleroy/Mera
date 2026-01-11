@@ -9,10 +9,11 @@ import (
 )
 
 type Router struct {
-	engine         *gin.Engine
-	jwtMiddleware  *middleware.JWTMiddleware
-	permMiddleware *middleware.PermissionMiddleware
-	authHandler    *AuthHandler
+	engine           *gin.Engine
+	jwtMiddleware    *middleware.JWTMiddleware
+	permMiddleware   *middleware.PermissionMiddleware
+	loginRateLimiter *middleware.LoginRateLimiter
+	authHandler      *AuthHandler
 }
 
 func NewRouter(
@@ -22,10 +23,11 @@ func NewRouter(
 	permissionService *service.PermissionService,
 ) *Router {
 	r := &Router{
-		engine:         gin.Default(),
-		jwtMiddleware:  middleware.NewJWTMiddleware(jwtManager, sessionService),
-		permMiddleware: middleware.NewPermissionMiddleware(permissionService),
-		authHandler:    NewAuthHandler(authService, sessionService, permissionService),
+		engine:           gin.Default(),
+		jwtMiddleware:    middleware.NewJWTMiddleware(jwtManager, sessionService),
+		permMiddleware:   middleware.NewPermissionMiddleware(permissionService),
+		loginRateLimiter: middleware.NewDefaultLoginRateLimiter(),
+		authHandler:      NewAuthHandler(authService, sessionService, permissionService),
 	}
 	r.setupRoutes()
 	return r
@@ -53,7 +55,8 @@ func (r *Router) setupRoutes() {
 
 	auth := r.engine.Group("/auth")
 	{
-		auth.POST("/login", r.authHandler.Login)
+		// Login with rate limiting - max 10 attempts per 5 minutes per username+IP
+		auth.POST("/login", r.loginRateLimiter.Middleware(), r.authHandler.Login)
 		auth.POST("/refresh", r.authHandler.Refresh)
 
 		protected := auth.Group("")
