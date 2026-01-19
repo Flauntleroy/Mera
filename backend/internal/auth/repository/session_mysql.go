@@ -23,13 +23,13 @@ func (r *mysqlSessionRepository) Create(ctx context.Context, session *entity.Log
 	if session.ID == "" {
 		session.ID = uuid.New().String()
 	}
-	query := `INSERT INTO login_sessions (id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`
+	query := `INSERT INTO mera_login_sessions (id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`
 	_, err := r.db.ExecContext(ctx, query, session.ID, session.UserID, session.RefreshTokenHash, session.DeviceInfo, session.IPAddress)
 	return err
 }
 
 func (r *mysqlSessionRepository) GetByID(ctx context.Context, id string) (*entity.LoginSession, error) {
-	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM login_sessions WHERE id = ?`
+	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM mera_login_sessions WHERE id = ?`
 	s := &entity.LoginSession{}
 	var deviceInfo, ipAddress sql.NullString
 	var revokedAt sql.NullTime
@@ -53,7 +53,7 @@ func (r *mysqlSessionRepository) GetByID(ctx context.Context, id string) (*entit
 }
 
 func (r *mysqlSessionRepository) GetByRefreshTokenHash(ctx context.Context, hash string) (*entity.LoginSession, error) {
-	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM login_sessions WHERE refresh_token_hash = ?`
+	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM mera_login_sessions WHERE refresh_token_hash = ?`
 	s := &entity.LoginSession{}
 	var deviceInfo, ipAddress sql.NullString
 	var revokedAt sql.NullTime
@@ -77,12 +77,12 @@ func (r *mysqlSessionRepository) GetByRefreshTokenHash(ctx context.Context, hash
 }
 
 func (r *mysqlSessionRepository) GetActiveByUserID(ctx context.Context, userID string) ([]entity.LoginSession, error) {
-	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM login_sessions WHERE user_id = ? AND revoked_at IS NULL ORDER BY last_seen_at DESC`
+	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM mera_login_sessions WHERE user_id = ? AND revoked_at IS NULL ORDER BY last_seen_at DESC`
 	return r.querySessions(ctx, query, userID)
 }
 
 func (r *mysqlSessionRepository) GetAllByUserID(ctx context.Context, userID string) ([]entity.LoginSession, error) {
-	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM login_sessions WHERE user_id = ? ORDER BY created_at DESC`
+	query := `SELECT id, user_id, refresh_token_hash, device_info, ip_address, created_at, last_seen_at, revoked_at FROM mera_login_sessions WHERE user_id = ? ORDER BY created_at DESC`
 	return r.querySessions(ctx, query, userID)
 }
 
@@ -115,13 +115,13 @@ func (r *mysqlSessionRepository) querySessions(ctx context.Context, query string
 }
 
 func (r *mysqlSessionRepository) UpdateLastSeen(ctx context.Context, sessionID string) error {
-	query := `UPDATE login_sessions SET last_seen_at = ? WHERE id = ? AND revoked_at IS NULL`
+	query := `UPDATE mera_login_sessions SET last_seen_at = ? WHERE id = ? AND revoked_at IS NULL`
 	_, err := r.db.ExecContext(ctx, query, time.Now(), sessionID)
 	return err
 }
 
 func (r *mysqlSessionRepository) Revoke(ctx context.Context, sessionID string) error {
-	query := `UPDATE login_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`
+	query := `UPDATE mera_login_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`
 	result, err := r.db.ExecContext(ctx, query, time.Now(), sessionID)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (r *mysqlSessionRepository) Revoke(ctx context.Context, sessionID string) e
 }
 
 func (r *mysqlSessionRepository) RevokeAllByUserID(ctx context.Context, userID string) error {
-	query := `UPDATE login_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`
+	query := `UPDATE mera_login_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`
 	_, err := r.db.ExecContext(ctx, query, time.Now(), userID)
 	return err
 }

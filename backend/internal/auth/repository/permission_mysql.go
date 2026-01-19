@@ -21,13 +21,13 @@ func (r *mysqlPermissionRepository) Create(ctx context.Context, perm *entity.Per
 	if perm.ID == "" {
 		perm.ID = uuid.New().String()
 	}
-	query := `INSERT INTO permissions (id, code, domain, action, description, created_at) VALUES (?, ?, ?, ?, ?, NOW())`
+	query := `INSERT INTO mera_permissions (id, code, domain, action, description, created_at) VALUES (?, ?, ?, ?, ?, NOW())`
 	_, err := r.db.ExecContext(ctx, query, perm.ID, perm.Code, perm.Domain, perm.Action, perm.Description)
 	return err
 }
 
 func (r *mysqlPermissionRepository) GetByID(ctx context.Context, id string) (*entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description, created_at FROM permissions WHERE id = ?`
+	query := `SELECT id, code, domain, action, description, created_at FROM mera_permissions WHERE id = ?`
 	p := &entity.Permission{}
 	var desc sql.NullString
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&p.ID, &p.Code, &p.Domain, &p.Action, &desc, &p.CreatedAt)
@@ -44,7 +44,7 @@ func (r *mysqlPermissionRepository) GetByID(ctx context.Context, id string) (*en
 }
 
 func (r *mysqlPermissionRepository) GetByCode(ctx context.Context, code string) (*entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description, created_at FROM permissions WHERE code = ?`
+	query := `SELECT id, code, domain, action, description, created_at FROM mera_permissions WHERE code = ?`
 	p := &entity.Permission{}
 	var desc sql.NullString
 	err := r.db.QueryRowContext(ctx, query, code).Scan(&p.ID, &p.Code, &p.Domain, &p.Action, &desc, &p.CreatedAt)
@@ -61,7 +61,7 @@ func (r *mysqlPermissionRepository) GetByCode(ctx context.Context, code string) 
 }
 
 func (r *mysqlPermissionRepository) GetByDomain(ctx context.Context, domain string) ([]entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description, created_at FROM permissions WHERE domain = ?`
+	query := `SELECT id, code, domain, action, description, created_at FROM mera_permissions WHERE domain = ?`
 	rows, err := r.db.QueryContext(ctx, query, domain)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (r *mysqlPermissionRepository) GetByDomain(ctx context.Context, domain stri
 }
 
 func (r *mysqlPermissionRepository) GetAll(ctx context.Context) ([]entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description, created_at FROM permissions ORDER BY domain, action`
+	query := `SELECT id, code, domain, action, description, created_at FROM mera_permissions ORDER BY domain, action`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (r *mysqlPermissionRepository) GetAll(ctx context.Context) ([]entity.Permis
 
 func (r *mysqlPermissionRepository) GetEffectivePermissions(ctx context.Context, userID string) (map[string]bool, error) {
 	// Get role-based permissions
-	query := `SELECT DISTINCT p.code FROM permissions p INNER JOIN role_permissions rp ON p.id = rp.permission_id INNER JOIN user_roles ur ON rp.role_id = ur.role_id WHERE ur.user_id = ?`
+	query := `SELECT DISTINCT p.code FROM mera_permissions p INNER JOIN mera_role_permissions rp ON p.id = rp.permission_id INNER JOIN mera_user_roles ur ON rp.role_id = ur.role_id WHERE ur.user_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (r *mysqlPermissionRepository) GetEffectivePermissions(ctx context.Context,
 	}
 
 	// Apply user overrides
-	overrideQuery := `SELECT p.code, up.type FROM user_permissions up INNER JOIN permissions p ON up.permission_id = p.id WHERE up.user_id = ?`
+	overrideQuery := `SELECT p.code, up.type FROM mera_user_permissions up INNER JOIN mera_permissions p ON up.permission_id = p.id WHERE up.user_id = ?`
 	overrideRows, err := r.db.QueryContext(ctx, overrideQuery, userID)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (r *mysqlPermissionRepository) GetEffectivePermissions(ctx context.Context,
 }
 
 func (r *mysqlPermissionRepository) GetUserOverrides(ctx context.Context, userID string) ([]entity.UserPermissionOverride, error) {
-	query := `SELECT up.user_id, up.permission_id, up.type, up.created_at, p.id, p.code, p.domain, p.action, p.description, p.created_at FROM user_permissions up INNER JOIN permissions p ON up.permission_id = p.id WHERE up.user_id = ?`
+	query := `SELECT up.user_id, up.permission_id, up.type, up.created_at, p.id, p.code, p.domain, p.action, p.description, p.created_at FROM mera_user_permissions up INNER JOIN mera_permissions p ON up.permission_id = p.id WHERE up.user_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
@@ -169,13 +169,13 @@ func (r *mysqlPermissionRepository) GetUserOverrides(ctx context.Context, userID
 }
 
 func (r *mysqlPermissionRepository) SetUserOverride(ctx context.Context, userID, permissionID, overrideType string) error {
-	query := `INSERT INTO user_permissions (user_id, permission_id, type, created_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE type = VALUES(type)`
+	query := `INSERT INTO mera_user_permissions (user_id, permission_id, type, created_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE type = VALUES(type)`
 	_, err := r.db.ExecContext(ctx, query, userID, permissionID, overrideType)
 	return err
 }
 
 func (r *mysqlPermissionRepository) RemoveUserOverride(ctx context.Context, userID, permissionID string) error {
-	query := `DELETE FROM user_permissions WHERE user_id = ? AND permission_id = ?`
+	query := `DELETE FROM mera_user_permissions WHERE user_id = ? AND permission_id = ?`
 	_, err := r.db.ExecContext(ctx, query, userID, permissionID)
 	return err
 }

@@ -29,13 +29,13 @@ func NewMySQLPermissionRepository(db *sql.DB) *MySQLPermissionRepository {
 }
 
 func (r *MySQLPermissionRepository) Create(ctx context.Context, perm *entity.Permission) error {
-	query := `INSERT INTO permissions (id, code, domain, action, description, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO mera_permissions (id, code, domain, action, description, created_at) VALUES (?, ?, ?, ?, ?, ?)`
 	_, err := r.db.ExecContext(ctx, query, perm.ID, perm.Code, perm.Domain, perm.Action, perm.Description, time.Now())
 	return err
 }
 
 func (r *MySQLPermissionRepository) GetByID(ctx context.Context, id string) (*entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description FROM permissions WHERE id = ?`
+	query := `SELECT id, code, domain, action, description FROM mera_permissions WHERE id = ?`
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var p entity.Permission
@@ -54,7 +54,7 @@ func (r *MySQLPermissionRepository) GetByID(ctx context.Context, id string) (*en
 }
 
 func (r *MySQLPermissionRepository) GetByCode(ctx context.Context, code string) (*entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description FROM permissions WHERE code = ?`
+	query := `SELECT id, code, domain, action, description FROM mera_permissions WHERE code = ?`
 	row := r.db.QueryRowContext(ctx, query, code)
 
 	var p entity.Permission
@@ -73,7 +73,7 @@ func (r *MySQLPermissionRepository) GetByCode(ctx context.Context, code string) 
 }
 
 func (r *MySQLPermissionRepository) GetAll(ctx context.Context) ([]entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description FROM permissions ORDER BY domain, action`
+	query := `SELECT id, code, domain, action, description FROM mera_permissions ORDER BY domain, action`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (r *MySQLPermissionRepository) GetAll(ctx context.Context) ([]entity.Permis
 }
 
 func (r *MySQLPermissionRepository) GetByDomain(ctx context.Context, domain string) ([]entity.Permission, error) {
-	query := `SELECT id, code, domain, action, description FROM permissions WHERE domain = ? ORDER BY action`
+	query := `SELECT id, code, domain, action, description FROM mera_permissions WHERE domain = ? ORDER BY action`
 	rows, err := r.db.QueryContext(ctx, query, domain)
 	if err != nil {
 		return nil, err

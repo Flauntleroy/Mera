@@ -11,7 +11,11 @@
 -- Table: users
 -- Core user accounts for authentication
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS users (
+-- ---------------------------------------------
+-- Table: mera_users
+-- Core user accounts for authentication
+-- ---------------------------------------------
+CREATE TABLE IF NOT EXISTS mera_users (
     id CHAR(36) NOT NULL,
     username VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -22,16 +26,16 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     PRIMARY KEY (id),
-    UNIQUE KEY uk_users_username (username),
-    UNIQUE KEY uk_users_email (email),
-    INDEX idx_users_is_active (is_active)
+    UNIQUE KEY uk_mera_users_username (username),
+    UNIQUE KEY uk_mera_users_email (email),
+    INDEX idx_mera_users_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------
--- Table: roles
+-- Table: mera_roles
 -- Role definitions (permission templates)
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS roles (
+CREATE TABLE IF NOT EXISTS mera_roles (
     id CHAR(36) NOT NULL,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -39,15 +43,15 @@ CREATE TABLE IF NOT EXISTS roles (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     PRIMARY KEY (id),
-    UNIQUE KEY uk_roles_name (name)
+    UNIQUE KEY uk_mera_roles_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------
--- Table: permissions
+-- Table: mera_permissions
 -- Permission definitions in domain.action format
 -- Example: billing.read, patient.create
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS permissions (
+CREATE TABLE IF NOT EXISTS mera_permissions (
     id CHAR(36) NOT NULL,
     code VARCHAR(100) NOT NULL,
     domain VARCHAR(50) NOT NULL,
@@ -56,69 +60,69 @@ CREATE TABLE IF NOT EXISTS permissions (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (id),
-    UNIQUE KEY uk_permissions_code (code),
-    INDEX idx_permissions_domain (domain)
+    UNIQUE KEY uk_mera_permissions_code (code),
+    INDEX idx_mera_permissions_domain (domain)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------
--- Table: role_permissions
+-- Table: mera_role_permissions
 -- Maps roles to their permissions
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS role_permissions (
+CREATE TABLE IF NOT EXISTS mera_role_permissions (
     role_id CHAR(36) NOT NULL,
     permission_id CHAR(36) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (role_id, permission_id),
-    CONSTRAINT fk_role_permissions_role 
-        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-    CONSTRAINT fk_role_permissions_permission 
-        FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+    CONSTRAINT fk_mera_role_permissions_role 
+        FOREIGN KEY (role_id) REFERENCES mera_roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mera_role_permissions_permission 
+        FOREIGN KEY (permission_id) REFERENCES mera_permissions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------
--- Table: user_roles
+-- Table: mera_user_roles
 -- Assigns roles to users (many-to-many)
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS user_roles (
+CREATE TABLE IF NOT EXISTS mera_user_roles (
     user_id CHAR(36) NOT NULL,
     role_id CHAR(36) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (user_id, role_id),
-    CONSTRAINT fk_user_roles_user 
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_roles_role 
-        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+    CONSTRAINT fk_mera_user_roles_user 
+        FOREIGN KEY (user_id) REFERENCES mera_users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mera_user_roles_role 
+        FOREIGN KEY (role_id) REFERENCES mera_roles(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------
--- Table: user_permissions
+-- Table: mera_user_permissions
 -- Per-user permission overrides (grant OR revoke)
 -- This allows fine-grained control beyond role-based permissions.
 -- type = 'grant' => explicitly add permission
 -- type = 'revoke' => explicitly remove permission
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS user_permissions (
+CREATE TABLE IF NOT EXISTS mera_user_permissions (
     user_id CHAR(36) NOT NULL,
     permission_id CHAR(36) NOT NULL,
     type ENUM('grant', 'revoke') NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (user_id, permission_id),
-    CONSTRAINT fk_user_permissions_user 
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_permissions_permission 
-        FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+    CONSTRAINT fk_mera_user_permissions_user 
+        FOREIGN KEY (user_id) REFERENCES mera_users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mera_user_permissions_permission 
+        FOREIGN KEY (permission_id) REFERENCES mera_permissions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------
--- Table: login_sessions
+-- Table: mera_login_sessions
 -- Tracks all login sessions for audit and presence.
 -- Sessions are REVOKED, never deleted.
 -- Supports multi-device login and admin force logout.
 -- ---------------------------------------------
-CREATE TABLE IF NOT EXISTS login_sessions (
+CREATE TABLE IF NOT EXISTS mera_login_sessions (
     id CHAR(36) NOT NULL,
     user_id CHAR(36) NOT NULL,
     refresh_token_hash VARCHAR(255) NOT NULL,
@@ -129,16 +133,16 @@ CREATE TABLE IF NOT EXISTS login_sessions (
     revoked_at TIMESTAMP NULL,
     
     PRIMARY KEY (id),
-    CONSTRAINT fk_login_sessions_user 
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_login_sessions_user_id (user_id),
-    INDEX idx_login_sessions_revoked_at (revoked_at)
+    CONSTRAINT fk_mera_login_sessions_user 
+        FOREIGN KEY (user_id) REFERENCES mera_users(id) ON DELETE CASCADE,
+    INDEX idx_mera_login_sessions_user_id (user_id),
+    INDEX idx_mera_login_sessions_revoked_at (revoked_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
 -- Example Data: Seed permissions for SIMRS domains
 -- ============================================
-INSERT INTO permissions (id, code, domain, action, description) VALUES
+INSERT INTO mera_permissions (id, code, domain, action, description) VALUES
     (UUID(), 'patient.read', 'patient', 'read', 'View patient records'),
     (UUID(), 'patient.create', 'patient', 'create', 'Create new patient records'),
     (UUID(), 'patient.update', 'patient', 'update', 'Update patient records'),
@@ -156,17 +160,17 @@ INSERT INTO permissions (id, code, domain, action, description) VALUES
     (UUID(), 'role.manage', 'role', 'manage', 'Manage roles and permissions');
 
 -- Example role: Admin with all permissions
-INSERT INTO roles (id, name, description) VALUES
+INSERT INTO mera_roles (id, name, description) VALUES
     (UUID(), 'admin', 'System administrator with full access');
 
 -- Example role: Doctor
-INSERT INTO roles (id, name, description) VALUES
+INSERT INTO mera_roles (id, name, description) VALUES
     (UUID(), 'doctor', 'Medical doctor with patient access');
 
 -- Example role: Nurse  
-INSERT INTO roles (id, name, description) VALUES
+INSERT INTO mera_roles (id, name, description) VALUES
     (UUID(), 'nurse', 'Nursing staff with limited patient access');
 
 -- Example role: Billing Staff
-INSERT INTO roles (id, name, description) VALUES
+INSERT INTO mera_roles (id, name, description) VALUES
     (UUID(), 'billing_staff', 'Billing department personnel');

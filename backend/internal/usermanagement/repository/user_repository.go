@@ -51,7 +51,7 @@ func NewMySQLUserRepository(db *sql.DB) *MySQLUserRepository {
 }
 
 func (r *MySQLUserRepository) Create(ctx context.Context, user *entity.User) error {
-	query := `INSERT INTO users (id, username, email, password_hash, is_active, created_at, updated_at)
+	query := `INSERT INTO mera_users (id, username, email, password_hash, is_active, created_at, updated_at)
 			  VALUES (?, ?, ?, ?, ?, ?, ?)`
 	_, err := r.db.ExecContext(ctx, query,
 		user.ID, user.Username, user.Email, user.PasswordHash,
@@ -61,14 +61,14 @@ func (r *MySQLUserRepository) Create(ctx context.Context, user *entity.User) err
 
 func (r *MySQLUserRepository) GetByID(ctx context.Context, id string) (*entity.User, error) {
 	query := `SELECT id, username, email, password_hash, is_active, last_login_at, created_at, updated_at
-			  FROM users WHERE id = ? AND deleted_at IS NULL`
+			  FROM mera_users WHERE id = ? AND deleted_at IS NULL`
 	row := r.db.QueryRowContext(ctx, query, id)
 	return scanUser(row)
 }
 
 func (r *MySQLUserRepository) GetByUsername(ctx context.Context, username string) (*entity.User, error) {
 	query := `SELECT id, username, email, password_hash, is_active, last_login_at, created_at, updated_at
-			  FROM users WHERE username = ? AND deleted_at IS NULL`
+			  FROM mera_users WHERE username = ? AND deleted_at IS NULL`
 	row := r.db.QueryRowContext(ctx, query, username)
 	return scanUser(row)
 }
@@ -76,14 +76,14 @@ func (r *MySQLUserRepository) GetByUsername(ctx context.Context, username string
 func (r *MySQLUserRepository) GetAll(ctx context.Context, limit, offset int) ([]entity.User, int, error) {
 	// Count total
 	var total int
-	countQuery := `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`
+	countQuery := `SELECT COUNT(*) FROM mera_users WHERE deleted_at IS NULL`
 	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	// Get paginated users
 	query := `SELECT id, username, email, password_hash, is_active, last_login_at, created_at, updated_at
-			  FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?`
+			  FROM mera_users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -107,7 +107,7 @@ func (r *MySQLUserRepository) GetAll(ctx context.Context, limit, offset int) ([]
 }
 
 func (r *MySQLUserRepository) Update(ctx context.Context, user *entity.User) error {
-	query := `UPDATE users SET username = ?, email = ?, password_hash = ?, is_active = ?, updated_at = ?
+	query := `UPDATE mera_users SET username = ?, email = ?, password_hash = ?, is_active = ?, updated_at = ?
 			  WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query,
 		user.Username, user.Email, user.PasswordHash, user.IsActive, time.Now(), user.ID)
@@ -115,14 +115,14 @@ func (r *MySQLUserRepository) Update(ctx context.Context, user *entity.User) err
 }
 
 func (r *MySQLUserRepository) SoftDelete(ctx context.Context, id string) error {
-	query := `UPDATE users SET deleted_at = ?, is_active = FALSE WHERE id = ?`
+	query := `UPDATE mera_users SET deleted_at = ?, is_active = FALSE WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, time.Now(), id)
 	return err
 }
 
 func (r *MySQLUserRepository) GetRolesByUserID(ctx context.Context, userID string) ([]entity.Role, error) {
-	query := `SELECT r.id, r.name, r.description FROM roles r
-			  INNER JOIN user_roles ur ON r.id = ur.role_id
+	query := `SELECT r.id, r.name, r.description FROM mera_roles r
+			  INNER JOIN mera_user_roles ur ON r.id = ur.role_id
 			  WHERE ur.user_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *MySQLUserRepository) AssignRoles(ctx context.Context, userID string, ro
 		return nil
 	}
 
-	query := `INSERT INTO user_roles (user_id, role_id, created_at) VALUES (?, ?, ?)`
+	query := `INSERT INTO mera_user_roles (user_id, role_id, created_at) VALUES (?, ?, ?)`
 	for _, roleID := range roleIDs {
 		if _, err := r.db.ExecContext(ctx, query, userID, roleID, time.Now()); err != nil {
 			return err
@@ -166,14 +166,14 @@ func (r *MySQLUserRepository) AssignRoles(ctx context.Context, userID string, ro
 }
 
 func (r *MySQLUserRepository) RemoveAllRoles(ctx context.Context, userID string) error {
-	query := `DELETE FROM user_roles WHERE user_id = ?`
+	query := `DELETE FROM mera_user_roles WHERE user_id = ?`
 	_, err := r.db.ExecContext(ctx, query, userID)
 	return err
 }
 
 func (r *MySQLUserRepository) GetPermissionOverrides(ctx context.Context, userID string) ([]PermissionOverride, error) {
-	query := `SELECT up.permission_id, p.code, up.type FROM user_permissions up
-			  INNER JOIN permissions p ON up.permission_id = p.id
+	query := `SELECT up.permission_id, p.code, up.type FROM mera_user_permissions up
+			  INNER JOIN mera_permissions p ON up.permission_id = p.id
 			  WHERE up.user_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -202,7 +202,7 @@ func (r *MySQLUserRepository) SetPermissionOverrides(ctx context.Context, userID
 		return nil
 	}
 
-	query := `INSERT INTO user_permissions (user_id, permission_id, type, created_at) VALUES (?, ?, ?, ?)`
+	query := `INSERT INTO mera_user_permissions (user_id, permission_id, type, created_at) VALUES (?, ?, ?, ?)`
 	for _, o := range overrides {
 		if _, err := r.db.ExecContext(ctx, query, userID, o.PermissionID, o.Effect, time.Now()); err != nil {
 			return err
@@ -212,7 +212,7 @@ func (r *MySQLUserRepository) SetPermissionOverrides(ctx context.Context, userID
 }
 
 func (r *MySQLUserRepository) RemoveAllPermissionOverrides(ctx context.Context, userID string) error {
-	query := `DELETE FROM user_permissions WHERE user_id = ?`
+	query := `DELETE FROM mera_user_permissions WHERE user_id = ?`
 	_, err := r.db.ExecContext(ctx, query, userID)
 	return err
 }
@@ -229,15 +229,15 @@ func (r *MySQLUserRepository) CopyAccess(ctx context.Context, sourceUserID, targ
 	}
 
 	// 3. Copy roles from source to target
-	copyRolesQuery := `INSERT INTO user_roles (user_id, role_id, created_at)
-					   SELECT ?, role_id, ? FROM user_roles WHERE user_id = ?`
+	copyRolesQuery := `INSERT INTO mera_user_roles (user_id, role_id, created_at)
+					   SELECT ?, role_id, ? FROM mera_user_roles WHERE user_id = ?`
 	if _, err := r.db.ExecContext(ctx, copyRolesQuery, targetUserID, time.Now(), sourceUserID); err != nil {
 		return err
 	}
 
 	// 4. Copy permission overrides from source to target
-	copyPermsQuery := `INSERT INTO user_permissions (user_id, permission_id, type, created_at)
-					   SELECT ?, permission_id, type, ? FROM user_permissions WHERE user_id = ?`
+	copyPermsQuery := `INSERT INTO mera_user_permissions (user_id, permission_id, type, created_at)
+					   SELECT ?, permission_id, type, ? FROM mera_user_permissions WHERE user_id = ?`
 	if _, err := r.db.ExecContext(ctx, copyPermsQuery, targetUserID, time.Now(), sourceUserID); err != nil {
 		return err
 	}

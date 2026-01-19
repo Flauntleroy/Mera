@@ -21,13 +21,13 @@ func (r *mysqlRoleRepository) Create(ctx context.Context, role *entity.Role) err
 	if role.ID == "" {
 		role.ID = uuid.New().String()
 	}
-	query := `INSERT INTO roles (id, name, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`
+	query := `INSERT INTO mera_roles (id, name, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`
 	_, err := r.db.ExecContext(ctx, query, role.ID, role.Name, role.Description)
 	return err
 }
 
 func (r *mysqlRoleRepository) GetByID(ctx context.Context, id string) (*entity.Role, error) {
-	query := `SELECT id, name, description, created_at, updated_at FROM roles WHERE id = ?`
+	query := `SELECT id, name, description, created_at, updated_at FROM mera_roles WHERE id = ?`
 	role := &entity.Role{}
 	var desc sql.NullString
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&role.ID, &role.Name, &desc, &role.CreatedAt, &role.UpdatedAt)
@@ -44,7 +44,7 @@ func (r *mysqlRoleRepository) GetByID(ctx context.Context, id string) (*entity.R
 }
 
 func (r *mysqlRoleRepository) GetByName(ctx context.Context, name string) (*entity.Role, error) {
-	query := `SELECT id, name, description, created_at, updated_at FROM roles WHERE name = ?`
+	query := `SELECT id, name, description, created_at, updated_at FROM mera_roles WHERE name = ?`
 	role := &entity.Role{}
 	var desc sql.NullString
 	err := r.db.QueryRowContext(ctx, query, name).Scan(&role.ID, &role.Name, &desc, &role.CreatedAt, &role.UpdatedAt)
@@ -83,19 +83,19 @@ func (r *mysqlRoleRepository) GetAll(ctx context.Context) ([]entity.Role, error)
 }
 
 func (r *mysqlRoleRepository) Update(ctx context.Context, role *entity.Role) error {
-	query := `UPDATE roles SET name = ?, description = ?, updated_at = NOW() WHERE id = ?`
+	query := `UPDATE mera_roles SET name = ?, description = ?, updated_at = NOW() WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, role.Name, role.Description, role.ID)
 	return err
 }
 
 func (r *mysqlRoleRepository) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM roles WHERE id = ?`
+	query := `DELETE FROM mera_roles WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, id)
 	return err
 }
 
 func (r *mysqlRoleRepository) GetPermissionsByRoleID(ctx context.Context, roleID string) ([]entity.Permission, error) {
-	query := `SELECT p.id, p.code, p.domain, p.action, p.description, p.created_at FROM permissions p INNER JOIN role_permissions rp ON p.id = rp.permission_id WHERE rp.role_id = ?`
+	query := `SELECT p.id, p.code, p.domain, p.action, p.description, p.created_at FROM mera_permissions p INNER JOIN mera_role_permissions rp ON p.id = rp.permission_id WHERE rp.role_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, roleID)
 	if err != nil {
 		return nil, err
@@ -117,13 +117,13 @@ func (r *mysqlRoleRepository) GetPermissionsByRoleID(ctx context.Context, roleID
 }
 
 func (r *mysqlRoleRepository) AssignPermission(ctx context.Context, roleID, permissionID string) error {
-	query := `INSERT IGNORE INTO role_permissions (role_id, permission_id, created_at) VALUES (?, ?, NOW())`
+	query := `INSERT IGNORE INTO mera_role_permissions (role_id, permission_id, created_at) VALUES (?, ?, NOW())`
 	_, err := r.db.ExecContext(ctx, query, roleID, permissionID)
 	return err
 }
 
 func (r *mysqlRoleRepository) RemovePermission(ctx context.Context, roleID, permissionID string) error {
-	query := `DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?`
+	query := `DELETE FROM mera_role_permissions WHERE role_id = ? AND permission_id = ?`
 	_, err := r.db.ExecContext(ctx, query, roleID, permissionID)
 	return err
 }
