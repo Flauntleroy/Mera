@@ -24,4 +24,15 @@ export const API_ENDPOINTS = {
     ROLE_PERMISSIONS: (id: string) => `${API_BASE_URL}/admin/roles/${id}/permissions`,
     PERMISSIONS: `${API_BASE_URL}/admin/permissions`,
   },
+  VEDIKA: {
+    DASHBOARD: `${API_BASE_URL}/admin/vedika/dashboard`,
+    DASHBOARD_TREND: `${API_BASE_URL}/admin/vedika/dashboard/trend`,
+    INDEX: `${API_BASE_URL}/admin/vedika/index`,
+    CLAIM: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}`,
+    CLAIM_STATUS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/status`,
+    CLAIM_DIAGNOSIS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/diagnosis`,
+    CLAIM_PROCEDURE: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/procedure`,
+    CLAIM_DOCUMENTS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/documents`,
+    CLAIM_RESUME: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/resume`,
+  },
 };
