@@ -27,6 +27,7 @@ import UserManagement from "./pages/UserManagement";
 import RoleManagement from "./pages/RoleManagement";
 import VedikaDashboard from "./pages/Vedika/VedikaDashboard";
 import VedikaIndex from "./pages/Vedika/VedikaIndex";
+import VedikaClaimDetail from "./pages/Vedika/VedikaClaimDetail";
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/vedika" element={<VedikaDashboard />} />
               <Route path="/vedika/index" element={<VedikaIndex />} />
+              <Route path="/vedika/claim/:noRawat" element={<VedikaClaimDetail />} />
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/roles" element={<RoleManagement />} />
 

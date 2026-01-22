@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
     DASHBOARD_TREND: `${API_BASE_URL}/admin/vedika/dashboard/trend`,
     INDEX: `${API_BASE_URL}/admin/vedika/index`,
     CLAIM: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}`,
+    CLAIM_FULL: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/full/${noRawat}`,
     CLAIM_STATUS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/status`,
     CLAIM_DIAGNOSIS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/diagnosis`,
     CLAIM_PROCEDURE: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/procedure`,

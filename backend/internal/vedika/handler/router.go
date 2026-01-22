@@ -15,10 +15,11 @@ import (
 
 // Router handles Vedika route setup.
 type Router struct {
-	dashboardHandler *DashboardHandler
-	workbenchHandler *WorkbenchHandler
-	jwtMiddleware    *middleware.JWTMiddleware
-	permMiddleware   *middleware.PermissionMiddleware
+	dashboardHandler   *DashboardHandler
+	workbenchHandler   *WorkbenchHandler
+	claimDetailHandler *ClaimDetailHandler
+	jwtMiddleware      *middleware.JWTMiddleware
+	permMiddleware     *middleware.PermissionMiddleware
 }
 
 // NewRouter creates a new Vedika router.
@@ -32,16 +33,19 @@ func NewRouter(
 	settingsRepo := repository.NewMySQLSettingsRepository(db)
 	dashboardRepo := repository.NewMySQLDashboardRepository(db)
 	indexRepo := repository.NewMySQLIndexRepository(db)
+	claimDetailRepo := repository.NewMySQLClaimDetailRepository(db)
 
 	// Initialize services
 	dashboardSvc := vedikaService.NewDashboardService(settingsRepo, dashboardRepo, auditLogger)
 	workbenchSvc := vedikaService.NewWorkbenchService(indexRepo, auditLogger)
+	claimDetailSvc := vedikaService.NewClaimDetailService(claimDetailRepo, settingsRepo, auditLogger)
 
 	return &Router{
-		dashboardHandler: NewDashboardHandler(dashboardSvc),
-		workbenchHandler: NewWorkbenchHandler(workbenchSvc),
-		jwtMiddleware:    jwtMiddleware,
-		permMiddleware:   permMiddleware,
+		dashboardHandler:   NewDashboardHandler(dashboardSvc),
+		workbenchHandler:   NewWorkbenchHandler(workbenchSvc),
+		claimDetailHandler: NewClaimDetailHandler(claimDetailSvc),
+		jwtMiddleware:      jwtMiddleware,
+		permMiddleware:     permMiddleware,
 	}
 }
 
@@ -68,8 +72,11 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 		// Claim detail endpoints
 		claim := vedika.Group("/claim")
 		{
-			// View claim (require vedika.claim.read)
+			// View basic claim (require vedika.claim.read)
 			claim.GET("/:no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
+
+			// View FULL claim detail - all 14 sections (require vedika.claim.read)
+			claim.GET("/full/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.claimDetailHandler.GetClaimFullDetail)
 
 			// Update status (require vedika.claim.update_status)
 			claim.POST("/:no_rawat/status", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)

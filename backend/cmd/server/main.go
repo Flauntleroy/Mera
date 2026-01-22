@@ -111,6 +111,7 @@ func main() {
 	log.Println("    POST      /admin/vedika/claim/:no_rawat/procedure")
 	log.Println("    POST      /admin/vedika/claim/:no_rawat/documents")
 	log.Println("    GET       /admin/vedika/claim/:no_rawat/resume")
+	log.Println("    GET       /admin/vedika/claim/:no_rawat/full")
 
 	if err := authRouter.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
