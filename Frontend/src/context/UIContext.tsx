@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
+import { loadingEventBus } from '../utils/loadingEventBus';
 
 // Types
 interface ToastOptions {
@@ -36,6 +37,10 @@ interface ConfirmState {
 interface UIContextType {
     toast: (message: string, options?: ToastOptions) => void;
     confirm: (message: string, options?: ConfirmOptions) => Promise<boolean>;
+    startLoading: (message?: string) => void;
+    stopLoading: () => void;
+    isLoading: boolean;
+    loadingMessage: string;
 }
 
 const UIContext = createContext<UIContextType | null>(null);
@@ -290,6 +295,78 @@ function ConfirmDialog({ state, onConfirm, onCancel }: {
     );
 }
 
+// Global Loading Bar Component
+function LoadingBar({ isLoading, message }: { isLoading: boolean; message: string }) {
+    const [progress, setProgress] = useState(0);
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        if (isLoading) {
+            setVisible(true);
+            setProgress(0);
+
+            // Animate progress from 0 to 90%
+            const interval = setInterval(() => {
+                setProgress((prev) => {
+                    if (prev >= 90) {
+                        return prev;
+                    }
+                    // Slow down as it approaches 90%
+                    const increment = Math.max(1, (90 - prev) / 10);
+                    return Math.min(90, prev + increment);
+                });
+            }, 200);
+
+            return () => clearInterval(interval);
+        } else {
+            // Complete the animation
+            setProgress(100);
+            const timeout = setTimeout(() => {
+                setVisible(false);
+                setProgress(0);
+            }, 300);
+
+            return () => clearTimeout(timeout);
+        }
+    }, [isLoading]);
+
+    if (!visible) return null;
+
+    return (
+        <>
+            {/* Top Progress Bar */}
+            <div className="fixed top-0 left-0 right-0 z-[9999] h-1 bg-transparent">
+                <div
+                    className="h-full bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 transition-all duration-200 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+
+            {/* Loading Overlay - ALWAYS show during loading to block interaction */}
+            <div
+                className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-[3px] flex items-center justify-center cursor-wait"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="bg-white dark:bg-gray-800 rounded-2xl px-8 py-6 shadow-2xl border border-gray-200 dark:border-gray-700 flex items-center gap-4 animate-pulse-subtle">
+                    {/* Spinner */}
+                    <div className="relative w-10 h-10">
+                        <div className="absolute inset-0 border-4 border-gray-200 dark:border-gray-700 rounded-full" />
+                        <div className="absolute inset-0 border-4 border-transparent border-t-brand-500 rounded-full animate-spin" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-gray-800 dark:text-gray-100 font-semibold">
+                            {message || 'Sedang memuat data...'}
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                            Mohon tunggu sebentar
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
 // Provider Component
 export function UIProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -302,9 +379,23 @@ export function UIProvider({ children }: { children: ReactNode }) {
         variant: 'default',
         resolve: null,
     });
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
 
     // Use ref for stable ID counter across renders
     const toastIdRef = useRef(0);
+    const loadingCountRef = useRef(0);
+
+    // Subscribe to global loading events from apiRequest
+    useEffect(() => {
+        const unsubscribe = loadingEventBus.subscribe((loading) => {
+            setIsLoading(loading);
+            if (!loading) {
+                setLoadingMessage('');
+            }
+        });
+        return unsubscribe;
+    }, []);
 
     const toast = useCallback((message: string, options: ToastOptions = {}) => {
         const id = ++toastIdRef.current;
@@ -355,9 +446,29 @@ export function UIProvider({ children }: { children: ReactNode }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
+    // Loading functions with counter for concurrent requests
+    const startLoading = useCallback((message?: string) => {
+        loadingCountRef.current++;
+        setIsLoading(true);
+        if (message) {
+            setLoadingMessage(message);
+        }
+    }, []);
+
+    const stopLoading = useCallback(() => {
+        loadingCountRef.current = Math.max(0, loadingCountRef.current - 1);
+        if (loadingCountRef.current === 0) {
+            setIsLoading(false);
+            setLoadingMessage('');
+        }
+    }, []);
+
     return (
-        <UIContext.Provider value={{ toast, confirm }}>
+        <UIContext.Provider value={{ toast, confirm, startLoading, stopLoading, isLoading, loadingMessage }}>
             {children}
+
+            {/* Global Loading Bar */}
+            <LoadingBar isLoading={isLoading} message={loadingMessage} />
 
             {/* Toast Container - Over everything */}
             <div className="fixed right-6 top-6 z-[9999] flex flex-col gap-3 max-w-sm">

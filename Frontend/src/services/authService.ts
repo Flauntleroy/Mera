@@ -99,6 +99,8 @@ export const TokenStorage = {
 };
 
 // API Helper - exported for use in other services
+import { loadingEventBus } from '../utils/loadingEventBus';
+
 export async function apiRequest<T>(
     url: string,
     options: RequestInit = {}
@@ -114,18 +116,34 @@ export async function apiRequest<T>(
         (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
+    // Start loading indicator
+    loadingEventBus.startRequest();
 
-    const data = await response.json();
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers,
+        });
 
-    if (!response.ok) {
-        throw data as ApiError;
+        const data = await response.json();
+
+        if (!response.ok) {
+            // Handle 401 Unauthorized - clear all auth data and redirect to login
+            if (response.status === 401) {
+                TokenStorage.clear();
+                // Redirect to login page if not already there
+                if (!window.location.pathname.includes('/signin')) {
+                    window.location.href = '/signin';
+                }
+            }
+            throw data as ApiError;
+        }
+
+        return data as T;
+    } finally {
+        // Always stop loading, even on error
+        loadingEventBus.endRequest();
     }
-
-    return data as T;
 }
 
 // Auth Service Functions
