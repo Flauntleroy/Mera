@@ -26,10 +26,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Check for existing session on mount
     useEffect(() => {
         const initAuth = async () => {
-            const storedUser = TokenStorage.getUser();
             const accessToken = TokenStorage.getAccessToken();
 
-            if (storedUser && accessToken) {
+            // No token = not authenticated, skip API calls
+            if (!accessToken) {
+                TokenStorage.clear();
+                setIsLoading(false);
+                return;
+            }
+
+            try {
                 // Validate token by fetching current user
                 const currentUser = await authService.getMe();
                 if (currentUser) {
@@ -41,10 +47,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         const refreshedUser = await authService.getMe();
                         setUser(refreshedUser);
                     } else {
+                        // Refresh also failed, clear everything
                         TokenStorage.clear();
                     }
                 }
+            } catch {
+                // Any error means auth failed, clear tokens
+                TokenStorage.clear();
             }
+
             setIsLoading(false);
         };
 
