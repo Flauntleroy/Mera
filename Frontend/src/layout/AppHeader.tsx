@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useSidebar } from "../context/SidebarContext";
 import { useAppearance } from "../context/AppearanceContext";
-import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
 import TopNavbar from "./TopNavbar";
@@ -53,18 +52,9 @@ const AppHeader: React.FC = () => {
           {isTopLayout && (
             <Link to="/" className="hidden lg:flex items-center mr-4">
               <img
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
+                className="max-h-8 w-auto"
+                src="/images/logo/logo-mera.svg"
                 alt="Logo"
-                width={120}
-                height={32}
-              />
-              <img
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={120}
-                height={32}
               />
             </Link>
           )}
@@ -129,13 +119,8 @@ const AppHeader: React.FC = () => {
 
           <Link to="/" className="lg:hidden">
             <img
-              className="dark:hidden"
-              src="./images/logo/logo.svg"
-              alt="Logo"
-            />
-            <img
-              className="hidden dark:block"
-              src="./images/logo/logo-dark.svg"
+              className="max-h-8 w-auto"
+              src="/images/logo/logo-mera.svg"
               alt="Logo"
             />
           </Link>

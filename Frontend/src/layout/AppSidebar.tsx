@@ -349,33 +349,22 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${!showContent ? "lg:justify-center" : "justify-start"
-          }`}
+        className="py-8 flex justify-center w-full"
       >
         <Link to="/">
           {showContent ? (
             <>
               <img
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
+                className="max-h-14 w-auto"
+                src="/images/logo/logo-mera.svg"
                 alt="Logo"
-                width={150}
-                height={40}
-              />
-              <img
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
               />
             </>
           ) : (
             <img
-              src="/images/logo/logo-icon.svg"
+              className="w-10 h-10 object-contain"
+              src="/images/logo/logo-mera.svg"
               alt="Logo"
-              width={32}
-              height={32}
             />
           )}
         </Link>
