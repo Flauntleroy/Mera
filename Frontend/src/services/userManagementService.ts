@@ -122,11 +122,12 @@ export const userManagementService = {
 
         const query = params.toString();
         const url = `${API_ENDPOINTS.ADMIN.USERS}${query ? `?${query}` : ''}`;
-        const response = await apiRequest<UserListResponse>(url);
+        const response = await apiRequest<UserListResponse>(url, {}, { showGlobalLoading: false });
         return response.data;
     },
 
     async getUser(id: string): Promise<User> {
+        // Button click - needs global loading
         const response = await apiRequest<UserResponse>(API_ENDPOINTS.ADMIN.USER(id));
         return response.data;
     },
@@ -196,11 +197,12 @@ export const userManagementService = {
 
     // Roles
     async getRoles(): Promise<Role[]> {
-        const response = await apiRequest<RolesResponse>(API_ENDPOINTS.ADMIN.ROLES);
+        const response = await apiRequest<RolesResponse>(API_ENDPOINTS.ADMIN.ROLES, {}, { showGlobalLoading: false });
         return response.data?.roles || [];
     },
 
     async getRole(id: string): Promise<Role> {
+        // Button click - needs global loading
         const response = await apiRequest<{ success: boolean; data: Role }>(API_ENDPOINTS.ADMIN.ROLE(id));
         return response.data;
     },
@@ -236,7 +238,7 @@ export const userManagementService = {
     // Permissions
     async getPermissions(domain?: string): Promise<Permission[]> {
         const url = domain ? `${API_ENDPOINTS.ADMIN.PERMISSIONS}?domain=${domain}` : API_ENDPOINTS.ADMIN.PERMISSIONS;
-        const response = await apiRequest<PermissionsResponse>(url);
+        const response = await apiRequest<PermissionsResponse>(url, {}, { showGlobalLoading: false });
         return response.data?.permissions || [];
     },
 };

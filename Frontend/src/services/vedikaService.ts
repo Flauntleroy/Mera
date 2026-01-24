@@ -526,11 +526,11 @@ export function isPermissionDeniedError(error: unknown): boolean {
 export const vedikaService = {
     // Dashboard (Policy-driven - uses active_period from settings)
     getDashboard: async (): Promise<DashboardResponse> => {
-        return apiRequest<DashboardResponse>(API_ENDPOINTS.VEDIKA.DASHBOARD);
+        return apiRequest<DashboardResponse>(API_ENDPOINTS.VEDIKA.DASHBOARD, {}, { showGlobalLoading: false });
     },
 
     getDashboardTrend: async (): Promise<TrendResponse> => {
-        return apiRequest<TrendResponse>(API_ENDPOINTS.VEDIKA.DASHBOARD_TREND);
+        return apiRequest<TrendResponse>(API_ENDPOINTS.VEDIKA.DASHBOARD_TREND, {}, { showGlobalLoading: false });
     },
 
     // Index (Data-driven - uses explicit date range)
@@ -546,20 +546,20 @@ export const vedikaService = {
         if (params.search) searchParams.set('search', params.search);
 
         const url = `${API_ENDPOINTS.VEDIKA.INDEX}?${searchParams.toString()}`;
-        return apiRequest<IndexListResponse>(url);
+        return apiRequest<IndexListResponse>(url, {}, { showGlobalLoading: false });
     },
 
-    // Claim Detail
+    // Claim Detail (Button click - needs global loading)
     getClaimDetail: async (noRawat: string): Promise<ClaimDetailResponse> => {
         return apiRequest<ClaimDetailResponse>(API_ENDPOINTS.VEDIKA.CLAIM(noRawat));
     },
 
-    // FULL Claim Detail (14 Sections)
+    // FULL Claim Detail (Button click - needs global loading)
     getClaimFullDetail: async (noRawat: string): Promise<ClaimFullDetailResponse> => {
         return apiRequest<ClaimFullDetailResponse>(API_ENDPOINTS.VEDIKA.CLAIM_FULL(noRawat));
     },
 
-    // Claim Status Update
+    // Claim Status Update (KEEP global loading - mutation operation)
     updateClaimStatus: async (
         noRawat: string,
         data: StatusUpdateRequest
@@ -570,7 +570,7 @@ export const vedikaService = {
         });
     },
 
-    // Diagnosis Update
+    // Diagnosis Update (KEEP global loading - mutation operation)
     updateDiagnosis: async (
         noRawat: string,
         data: DiagnosisUpdateRequest
@@ -581,7 +581,7 @@ export const vedikaService = {
         });
     },
 
-    // Procedure Update
+    // Procedure Update (KEEP global loading - mutation operation)
     updateProcedure: async (
         noRawat: string,
         data: ProcedureUpdateRequest
@@ -592,7 +592,7 @@ export const vedikaService = {
         });
     },
 
-    // Resume (Read-only)
+    // Resume (Button click - needs global loading)
     getResume: async (noRawat: string): Promise<ResumeResponse> => {
         return apiRequest<ResumeResponse>(API_ENDPOINTS.VEDIKA.CLAIM_RESUME(noRawat));
     },

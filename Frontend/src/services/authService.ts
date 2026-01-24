@@ -136,11 +136,20 @@ async function tryRefreshToken(): Promise<boolean> {
     return false;
 }
 
+// Options for apiRequest
+export interface ApiRequestOptions {
+    /** Set to false to disable global loading overlay for this request */
+    showGlobalLoading?: boolean;
+    /** Internal flag for retry after token refresh */
+    _isRetry?: boolean;
+}
+
 export async function apiRequest<T>(
     url: string,
     options: RequestInit = {},
-    _isRetry = false
+    apiOptions: ApiRequestOptions = {}
 ): Promise<T> {
+    const { showGlobalLoading = true, _isRetry = false } = apiOptions;
     const accessToken = TokenStorage.getAccessToken();
 
     const headers: HeadersInit = {
@@ -152,8 +161,8 @@ export async function apiRequest<T>(
         (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Start loading indicator (only on first request, not retry)
-    if (!_isRetry) {
+    // Start loading indicator (only if enabled and not a retry)
+    if (showGlobalLoading && !_isRetry) {
         loadingEventBus.startRequest();
     }
 
@@ -180,7 +189,7 @@ export async function apiRequest<T>(
 
                 if (refreshed) {
                     // Retry the original request with new token
-                    return apiRequest<T>(url, options, true);
+                    return apiRequest<T>(url, options, { ...apiOptions, _isRetry: true });
                 }
 
                 // Refresh failed - clear and redirect
@@ -195,7 +204,7 @@ export async function apiRequest<T>(
         return data as T;
     } finally {
         // Always stop loading, even on error (only on first request)
-        if (!_isRetry) {
+        if (showGlobalLoading && !_isRetry) {
             loadingEventBus.endRequest();
         }
     }

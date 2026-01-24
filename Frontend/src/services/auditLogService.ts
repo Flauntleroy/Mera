@@ -1,6 +1,6 @@
 // Audit Log Service - API client for audit logs
 import { API_BASE_URL } from '../config/api';
-import { TokenStorage } from './authService';
+import { apiRequest } from './authService';
 
 // Types
 export interface AuditLogEntry {
@@ -55,33 +55,6 @@ export interface AuditLogDetailResponse {
     data: AuditLogEntry;
 }
 
-// API Helper
-async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
-    const accessToken = TokenStorage.getAccessToken();
-
-    const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        ...options.headers,
-    };
-
-    if (accessToken) {
-        (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw data;
-    }
-
-    return data as T;
-}
-
 // Audit Log Service
 export const auditLogService = {
     getAuditLogs: async (filter: AuditLogFilter = {}): Promise<AuditLogListResponse['data']> => {
@@ -97,11 +70,12 @@ export const auditLogService = {
         params.append('limit', String(filter.limit || 25));
 
         const url = `${API_BASE_URL}/admin/audit-logs?${params.toString()}`;
-        const response = await apiRequest<AuditLogListResponse>(url);
+        const response = await apiRequest<AuditLogListResponse>(url, {}, { showGlobalLoading: false });
         return response.data;
     },
 
     getAuditLogDetail: async (id: string): Promise<AuditLogEntry> => {
+        // Button click - needs global loading
         const url = `${API_BASE_URL}/admin/audit-logs/${id}`;
         const response = await apiRequest<AuditLogDetailResponse>(url);
         return response.data;
@@ -109,7 +83,7 @@ export const auditLogService = {
 
     getModules: async (): Promise<string[]> => {
         const url = `${API_BASE_URL}/admin/audit-logs/modules`;
-        const response = await apiRequest<{ success: boolean; data: string[] }>(url);
+        const response = await apiRequest<{ success: boolean; data: string[] }>(url, {}, { showGlobalLoading: false });
         return response.data;
     },
 };
