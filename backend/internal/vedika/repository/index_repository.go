@@ -34,6 +34,10 @@ type IndexRepository interface {
 	SearchICD10(ctx context.Context, query string) ([]entity.ICD10Item, error)
 	// Add/Update procedure
 	AddProcedure(ctx context.Context, noRawat string, req entity.ProcedureUpdateRequest) error
+	// Sync procedures (Bulk update)
+	SyncProcedures(ctx context.Context, noRawat string, procedures []entity.ProcedureUpdateRequest) error
+	// Search ICD-9
+	SearchICD9(ctx context.Context, query string) ([]entity.ICD9Item, error)
 	// Get documents
 	GetDocuments(ctx context.Context, noRawat string) ([]entity.DocumentItem, error)
 	// Get resume
@@ -638,6 +642,65 @@ func (r *MySQLIndexRepository) AddProcedure(ctx context.Context, noRawat string,
 	}
 
 	return nil
+}
+
+// SyncProcedures deletes existing procedures and inserts new ones in a transaction.
+func (r *MySQLIndexRepository) SyncProcedures(ctx context.Context, noRawat string, procedures []entity.ProcedureUpdateRequest) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Delete existing ones
+	_, err = tx.ExecContext(ctx, "DELETE FROM prosedur_pasien WHERE no_rawat = ?", noRawat)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing procedures: %w", err)
+	}
+
+	// 2. Insert new ones
+	statusLanjut, _ := r.GetEpisodeType(ctx, noRawat)
+	for _, p := range procedures {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO prosedur_pasien (no_rawat, kode, status, prioritas)
+			VALUES (?, ?, ?, ?)
+		`, noRawat, p.Kode, statusLanjut, p.Prioritas)
+		if err != nil {
+			return fmt.Errorf("failed to insert procedure %s: %w", p.Kode, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SearchICD9 searches for ICD-9-CM entries by code or description.
+func (r *MySQLIndexRepository) SearchICD9(ctx context.Context, query string) ([]entity.ICD9Item, error) {
+	searchPattern := "%" + query + "%"
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT kode, deskripsi_panjang 
+		FROM icd9 
+		WHERE kode LIKE ? OR deskripsi_pendek LIKE ? OR deskripsi_panjang LIKE ?
+		LIMIT 20
+	`, searchPattern, searchPattern, searchPattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search ICD-9: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.ICD9Item
+	for rows.Next() {
+		var item entity.ICD9Item
+		if err := rows.Scan(&item.Kode, &item.Nama); err != nil {
+			return nil, fmt.Errorf("failed to scan ICD-9 result: %w", err)
+		}
+		results = append(results, item)
+	}
+
+	if results == nil {
+		results = []entity.ICD9Item{}
+	}
+
+	return results, nil
 }
 
 // GetDocuments returns uploaded documents for an episode.

@@ -103,6 +103,7 @@ export interface DiagnosisItem {
 export interface ProcedureItem {
     kode: string;
     nama: string;
+    status_px?: string; // Utama / Sekunder
     prioritas: number;
 }
 
@@ -511,9 +512,23 @@ export interface ICD10SearchResponse {
     data: ICD10Item[];
 }
 
+export interface ICD9Item {
+    kode: string;
+    nama: string;
+}
+
+export interface ICD9SearchResponse {
+    success: boolean;
+    data: ICD9Item[];
+}
+
 export interface ProcedureUpdateRequest {
     kode: string;
     prioritas?: number;
+}
+
+export interface ProcedureSyncRequest {
+    procedures: ProcedureUpdateRequest[];
 }
 
 export interface SuccessMessageResponse {
@@ -648,6 +663,23 @@ export const vedikaService = {
         data: DiagnosisSyncRequest
     ): Promise<SuccessMessageResponse> => {
         return apiRequest<SuccessMessageResponse>(API_ENDPOINTS.VEDIKA.CLAIM_DIAGNOSIS(noRawat), {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // Search ICD-9
+    searchICD9: async (query: string): Promise<ICD9Item[]> => {
+        const url = `${API_ENDPOINTS.VEDIKA.ICD9_SEARCH}?search=${encodeURIComponent(query)}`;
+        return apiRequest<ICD9SearchResponse>(url, {}, { showGlobalLoading: false }).then(resp => resp.data);
+    },
+
+    // Sync Procedures (Bulk)
+    syncProcedures: async (
+        noRawat: string,
+        data: ProcedureSyncRequest
+    ): Promise<SuccessMessageResponse> => {
+        return apiRequest<SuccessMessageResponse>(API_ENDPOINTS.VEDIKA.CLAIM_PROCEDURE(noRawat), {
             method: 'PUT',
             body: JSON.stringify(data),
         });

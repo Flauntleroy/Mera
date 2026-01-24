@@ -178,6 +178,26 @@ func (h *WorkbenchHandler) UpdateProcedure(c *gin.Context) {
 	response.SuccessWithMessage(c, "Prosedur berhasil diubah", nil)
 }
 
+// SyncProcedures handles PUT /admin/vedika/claim/:no_rawat/procedure
+func (h *WorkbenchHandler) SyncProcedures(c *gin.Context) {
+	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	actor := getActor(c)
+	ip := c.ClientIP()
+
+	var req entity.ProcedureSyncRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	if err := h.workbenchSvc.SyncProcedures(c.Request.Context(), noRawat, req, actor, ip); err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, "Daftar prosedur berhasil diperbarui", nil)
+}
+
 // UploadDocument handles POST /admin/vedika/claim/:no_rawat/documents
 // Note: File upload handling would require multipart form parsing
 func (h *WorkbenchHandler) UploadDocument(c *gin.Context) {
@@ -239,6 +259,23 @@ func (h *WorkbenchHandler) SearchICD10(c *gin.Context) {
 	}
 
 	results, err := h.workbenchSvc.SearchICD10(c.Request.Context(), query)
+	if err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.Success(c, results)
+}
+
+// SearchICD9 handles GET /admin/vedika/icd9
+func (h *WorkbenchHandler) SearchICD9(c *gin.Context) {
+	query := c.Query("search")
+	if query == "" {
+		response.Success(c, []entity.ICD9Item{})
+		return
+	}
+
+	results, err := h.workbenchSvc.SearchICD9(c.Request.Context(), query)
 	if err != nil {
 		handleVedikaError(c, err)
 		return

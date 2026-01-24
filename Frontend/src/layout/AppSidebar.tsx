@@ -6,6 +6,7 @@ import { useAppearance } from "../context/AppearanceContext";
 import { useAuth } from "../context/AuthContext";
 import SidebarWidget from "./SidebarWidget";
 import { getAllNavItems, NavItem } from "../config/menuUtils";
+import ScrollArea from "../components/ui/ScrollArea";
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
@@ -243,7 +244,7 @@ const AppSidebar: React.FC = () => {
           )}
         </Link>
       </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+      <ScrollArea className="duration-300 ease-linear" containerClassName="flex-1">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
             {menuData.map(({ section, navItems }) => (
@@ -266,7 +267,7 @@ const AppSidebar: React.FC = () => {
           </div>
         </nav>
         {showContent ? <SidebarWidget /> : null}
-      </div>
+      </ScrollArea>
     </aside>
   );
 };

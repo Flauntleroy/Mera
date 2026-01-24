@@ -22,6 +22,19 @@ Use the `Select` component for standard dropdowns to ensure consistent appearanc
 - **Secondary Colors**: Use `gray` for neutral elements, `success` for completions, and `error` for destructive actions.
 
 
+### 4. Global Scrolling & Custom Indicators
+Semua area yang membutuhkan scroll vertikal **WAJIB** menggunakan standar premium berikut:
+- **Global Reset**: Scrollbar standar browser telah di-reset dI `index.css` menjadi lebih tipis dan rounded. Jangan gunakan class `no-scrollbar` kecuali sangat diperlukan.
+- **ScrollArea Component**: Gunakan `ScrollArea` component untuk area konten yang dinamis (seperti Sidebar, Modals, atau Page Content).
+- **Import**: `import ScrollArea from '../../components/ui/ScrollArea';`
+- **Fitur**: `ScrollArea` secara otomatis menambahkan indikator bayangan (top/bottom shadow) saat konten melampaui batas container.
+- **Usage**:
+  ```tsx
+  <ScrollArea className="p-6 space-y-4" containerClassName="max-h-[70vh]">
+    {/* Content */}
+  </ScrollArea>
+  ```
+
 ## Patterns
 
 ### Form Layouts
@@ -35,6 +48,10 @@ Semua tabel yang menggunakan paginasi **WAJIB** menyertakan pilihan limit data (
 - **Navigasi**: Gunakan icon SVG (chevron) untuk tombol Previous/Next, bukan teks.
 - **Logic**: Mengubah limit harus me-reset halaman (page) kembali ke 1.
 - **Styling**: Gunakan Tailwind classes yang konsisten dengan `VedikaIndex` atau `UserManagement`.
+
+### Modals & Panels
+- Selalu bungkus konten modal dI dalam `ScrollArea` untuk memberikan visual cue saat ada overflow.
+- Gunakan `max-h-[...vh]` pada `containerClassName` milik `ScrollArea` untuk membatasi tinggi modal dI layar kecil.
 
 ### Dark Mode
 Ensure all components have `dark:` variant classes to support the dashboard's appearance toggling.

@@ -271,6 +271,36 @@ func (s *WorkbenchService) UpdateProcedure(ctx context.Context, noRawat string, 
 	return nil
 }
 
+// SyncProcedures updates all procedures for an episode in one batch.
+func (s *WorkbenchService) SyncProcedures(ctx context.Context, noRawat string, req entity.ProcedureSyncRequest, actor audit.Actor, ip string) error {
+	if err := s.indexRepo.SyncProcedures(ctx, noRawat, req.Procedures); err != nil {
+		return fmt.Errorf("failed to sync procedures: %w", err)
+	}
+
+	// Audit log - WRITE
+	s.auditLogger.LogUpdate(audit.UpdateParams{
+		Module: "vedika",
+		Entity: audit.Entity{
+			Table:      "prosedur_pasien",
+			PrimaryKey: map[string]string{"no_rawat": noRawat},
+		},
+		ChangedColumns: map[string]audit.ColumnChange{
+			"procedures": {Old: "multiple", New: "multiple_updated"},
+		},
+		BusinessKey: noRawat,
+		Actor:       actor,
+		IP:          ip,
+		Summary:     fmt.Sprintf("Sinkronisasi prosedur klaim %s (%d item)", noRawat, len(req.Procedures)),
+	})
+
+	return nil
+}
+
+// SearchICD9 searches for ICD-9-CM entries.
+func (s *WorkbenchService) SearchICD9(ctx context.Context, query string) ([]entity.ICD9Item, error) {
+	return s.indexRepo.SearchICD9(ctx, query)
+}
+
 // GetResume returns medical resume.
 func (s *WorkbenchService) GetResume(ctx context.Context, noRawat string, actor audit.Actor, ip string) (*entity.MedicalResume, error) {
 	resume, err := s.indexRepo.GetResume(ctx, noRawat)

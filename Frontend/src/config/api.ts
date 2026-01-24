@@ -37,5 +37,6 @@ export const API_ENDPOINTS = {
     CLAIM_DOCUMENTS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/documents/${noRawat}`,
     CLAIM_RESUME: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/resume/${noRawat}`,
     ICD10_SEARCH: `${API_BASE_URL}/admin/vedika/icd10`,
+    ICD9_SEARCH: `${API_BASE_URL}/admin/vedika/icd9`,
   },
 };

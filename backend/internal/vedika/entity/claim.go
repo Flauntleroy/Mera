@@ -142,6 +142,12 @@ type ICD10Item struct {
 	Nama string `json:"nama"`
 }
 
+// ICD9Item represents a master ICD-9-CM entry.
+type ICD9Item struct {
+	Kode string `json:"kode"`
+	Nama string `json:"nama"`
+}
+
 // DiagnosisItem represents a single diagnosis entry.
 type DiagnosisItem struct {
 	KodePenyakit string `json:"kode_penyakit"`
@@ -214,6 +220,11 @@ type DiagnosisSyncRequest struct {
 type ProcedureUpdateRequest struct {
 	Kode      string `json:"kode" binding:"required"`
 	Prioritas int    `json:"prioritas"`
+}
+
+// ProcedureSyncRequest represents bulk update of procedures.
+type ProcedureSyncRequest struct {
+	Procedures []ProcedureUpdateRequest `json:"procedures" binding:"required,min=1"`
 }
 
 // PaginatedResult wraps paginated list results.

@@ -67,6 +67,7 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 		master.Use(r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"))
 		{
 			master.GET("/icd10", r.workbenchHandler.SearchICD10)
+			master.GET("/icd9", r.workbenchHandler.SearchICD9)
 		}
 
 		// Index workbench - list endpoints (require vedika.read)
@@ -100,6 +101,9 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 
 			// Edit procedure (require vedika.claim.edit_medical_data)
 			claim.POST("/procedure/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateProcedure)
+
+			// Sync procedures (require vedika.claim.edit_medical_data)
+			claim.PUT("/procedure/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.SyncProcedures)
 
 			// Upload documents (require vedika.claim.upload_document)
 			claim.POST("/documents/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.UploadDocument)

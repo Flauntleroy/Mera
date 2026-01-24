@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { vedikaService, type ClaimStatus } from '../../../services/vedikaService';
+import ScrollArea from '../../../components/ui/ScrollArea';
 
 interface BatchStatusModalProps {
     isOpen: boolean;
@@ -86,7 +87,7 @@ export default function BatchStatusModal({
                 </div>
 
                 {/* Content */}
-                <div className="px-6 py-4 space-y-4">
+                <ScrollArea className="px-6 py-4 space-y-4" containerClassName="max-h-[60vh]">
                     {/* Status Selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -152,7 +153,7 @@ export default function BatchStatusModal({
                             <p className="text-sm text-error-600 dark:text-error-400">{error}</p>
                         </div>
                     )}
-                </div>
+                </ScrollArea>
 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">

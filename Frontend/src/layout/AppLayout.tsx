@@ -4,6 +4,7 @@ import { Outlet } from "react-router";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
+import ScrollArea from "../components/ui/ScrollArea";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -36,12 +37,12 @@ const LayoutContent: React.FC = () => {
         </div>
       )}
       <div
-        className={`flex-1 transition-all duration-300 ease-in-out ${getMainMargin()} ${isMobileOpen ? 'ml-0' : ''}`}
+        className={`flex-1 flex flex-col h-screen transition-all duration-300 ease-in-out ${getMainMargin()} ${isMobileOpen ? 'ml-0' : ''}`}
       >
         <AppHeader />
-        <div className={`${contentMaxWidth} ${contentPadding}`}>
+        <ScrollArea className={`${contentMaxWidth} ${contentPadding}`}>
           <Outlet />
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );

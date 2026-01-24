@@ -3,11 +3,13 @@ import {
     vedikaService,
     type IndexEpisode,
     type ClaimStatus,
-    type DiagnosisItem
+    type DiagnosisItem,
+    type ProcedureItem
 } from '../../../services/vedikaService';
 import authService from '../../../services/authService';
 import DiagnosisModal from './DiagnosisModal';
 import StatusUpdateModal from './StatusUpdateModal';
+import ProcedureModal from './ProcedureModal';
 
 interface ExpandedRowDetailProps {
     item: IndexEpisode;
@@ -25,9 +27,11 @@ const STATUS_OPTIONS: { value: ClaimStatus; label: string; color: string }[] = [
 export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetailProps) {
     // UI State
     const [diagnoses, setDiagnoses] = useState<DiagnosisItem[]>([]);
+    const [procedures, setProcedures] = useState<ProcedureItem[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [isProcedureModalOpen, setIsProcedureModalOpen] = useState(false);
 
     const canEdit = authService.hasPermission('vedika.claim.edit_medical_data');
 
@@ -36,6 +40,7 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
         try {
             const detail = await vedikaService.getClaimDetail(item.no_rawat);
             setDiagnoses(detail.data.diagnoses || []);
+            setProcedures(detail.data.procedures || []);
         } catch (error) {
             console.error('Failed to fetch details:', error);
         } finally {
@@ -115,6 +120,14 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                                                 </div>
                                             </div>
                                         ))}
+                                        {diagnoses.filter(d => d.status_dx === 'Utama').length === 0 && (
+                                            <div
+                                                onClick={() => canEdit && setIsDiagnosisModalOpen(true)}
+                                                className={`text-[10px] text-gray-400 italic pl-1 py-1 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-500' : ''}`}
+                                            >
+                                                {canEdit ? '+ Tambah diagnosa utama (Wajib)' : 'Belum ada diagnosa utama'}
+                                            </div>
+                                        )}
                                     </section>
 
                                     {/* Diagnosa Tambahan Section */}
@@ -135,8 +148,11 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                                                 </div>
                                             ))}
                                             {diagnoses.filter(d => d.status_dx !== 'Utama').length === 0 && (
-                                                <div className="text-[10px] text-gray-400 italic pl-1">
-                                                    Tidak ada diagnosa tambahan
+                                                <div
+                                                    onClick={() => canEdit && setIsDiagnosisModalOpen(true)}
+                                                    className={`text-[10px] text-gray-400 italic pl-1 py-1 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-500' : ''}`}
+                                                >
+                                                    {canEdit ? '+ Tambah diagnosa tambahan' : 'Tidak ada diagnosa tambahan'}
                                                 </div>
                                             )}
                                         </div>
@@ -146,19 +162,79 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                         </div>
                     </div>
 
-                    {/* Card 3: Ubah Prosedur */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
+                    {/* Card 3: Prosedur Panel (ICD-9-CM) */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col min-h-[220px]">
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                            Ubah Prosedur
+                            PROSEDUR (ICD-9-CM)
                         </h4>
 
-                        <div className="flex flex-col items-center justify-center flex-grow text-center py-4">
-                            <svg className="w-6 h-6 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                            </svg>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                                Segera hadir:<br />ICD-9-CM Editor
-                            </p>
+                        <div className="flex-grow">
+                            {isLoadingData ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Prosedur Utama Section */}
+                                    <section>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 border-b border-gray-50 dark:border-gray-700 pb-1">
+                                            Prosedur Utama
+                                        </div>
+                                        <div className="space-y-1">
+                                            {procedures.filter(p => p.prioritas === 1).map((p) => (
+                                                <div
+                                                    key={p.kode}
+                                                    onClick={() => canEdit && setIsProcedureModalOpen(true)}
+                                                    className={`group flex items-start gap-2 p-1.5 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-default'}`}
+                                                    title={p.nama}
+                                                >
+                                                    <div className="w-1 self-stretch bg-brand-500/50 rounded-full" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="font-mono font-bold text-gray-900 dark:text-white mr-2">{p.kode}</span>
+                                                        <span className="text-gray-600 dark:text-gray-300 text-xs truncate block">{p.nama}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {procedures.filter(p => p.prioritas === 1).length === 0 && (
+                                                <div
+                                                    onClick={() => canEdit && setIsProcedureModalOpen(true)}
+                                                    className={`text-[10px] text-gray-400 italic pl-1 py-1 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-500' : ''}`}
+                                                >
+                                                    {canEdit ? '+ Tambah prosedur utama' : 'Belum ada prosedur utama'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    {/* Prosedur Tambahan Section */}
+                                    <section>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 border-b border-gray-50 dark:border-gray-700 pb-1">
+                                            Prosedur Tambahan
+                                        </div>
+                                        <div className="space-y-1">
+                                            {procedures.filter(p => p.prioritas > 1).map((p) => (
+                                                <div
+                                                    key={p.kode}
+                                                    onClick={() => canEdit && setIsProcedureModalOpen(true)}
+                                                    className={`group flex items-baseline gap-1.5 py-0.5 px-1 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20' : 'cursor-default'}`}
+                                                    title={p.nama}
+                                                >
+                                                    <span className="font-mono font-bold text-[9px] text-gray-400 dark:text-gray-500 flex-shrink-0 w-8">{p.kode}</span>
+                                                    <span className="text-gray-500 dark:text-gray-500 text-[10px] truncate block leading-tight">{p.nama}</span>
+                                                </div>
+                                            ))}
+                                            {procedures.filter(p => p.prioritas > 1).length === 0 && (
+                                                <div
+                                                    onClick={() => canEdit && setIsProcedureModalOpen(true)}
+                                                    className={`text-[10px] text-gray-400 italic pl-1 py-1 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-500' : ''}`}
+                                                >
+                                                    {canEdit ? '+ Tambah prosedur tambahan' : 'Tidak ada prosedur tambahan'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -195,6 +271,15 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                 onClose={() => setIsDiagnosisModalOpen(false)}
                 noRawat={item.no_rawat}
                 initialDiagnoses={diagnoses}
+                onSuccess={fetchData}
+            />
+
+            {/* Procedure Management Modal */}
+            <ProcedureModal
+                isOpen={isProcedureModalOpen}
+                onClose={() => setIsProcedureModalOpen(false)}
+                noRawat={item.no_rawat}
+                initialProcedures={procedures}
                 onSuccess={fetchData}
             />
         </tr>

@@ -2,30 +2,30 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
     vedikaService,
-    type DiagnosisItem,
-    type ICD10Item
+    type ProcedureItem,
+    type ICD9Item
 } from '../../../services/vedikaService';
 import authService from '../../../services/authService';
 import ScrollArea from '../../../components/ui/ScrollArea';
 
-interface DiagnosisModalProps {
+interface ProcedureModalProps {
     isOpen: boolean;
     onClose: () => void;
     noRawat: string;
-    initialDiagnoses: DiagnosisItem[];
+    initialProcedures: ProcedureItem[];
     onSuccess: () => void;
 }
 
-export default function DiagnosisModal({
+export default function ProcedureModal({
     isOpen,
     onClose,
     noRawat,
-    initialDiagnoses,
+    initialProcedures,
     onSuccess,
-}: DiagnosisModalProps) {
-    const [tempDiagnoses, setTempDiagnoses] = useState<DiagnosisItem[]>([]);
+}: ProcedureModalProps) {
+    const [tempProcedures, setTempProcedures] = useState<ProcedureItem[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<ICD10Item[]>([]);
+    const [searchResults, setSearchResults] = useState<ICD9Item[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [activeType, setActiveType] = useState<'primary' | 'secondary'>('secondary');
@@ -35,12 +35,16 @@ export default function DiagnosisModal({
 
     useEffect(() => {
         if (isOpen) {
-            setTempDiagnoses([...initialDiagnoses]);
+            // Map procedures to include virtual status based on priority
+            setTempProcedures(initialProcedures.map(p => ({
+                ...p,
+                status_px: p.prioritas === 1 ? 'Utama' : 'Sekunder'
+            })));
             setError(null);
             setSearchQuery('');
             setSearchResults([]);
         }
-    }, [isOpen, initialDiagnoses]);
+    }, [isOpen, initialProcedures]);
 
     if (!isOpen) return null;
 
@@ -53,38 +57,37 @@ export default function DiagnosisModal({
 
         setIsSearching(true);
         try {
-            const items = await vedikaService.searchICD10(query);
+            const items = await vedikaService.searchICD9(query);
             setSearchResults(items);
         } catch (err) {
             console.error('Search failed:', err);
         } finally {
-            setIsSearching(true); // Wait, previous code had setIsSearchingICD(false)
             setIsSearching(false);
         }
     };
 
-    const addDiagnosis = (icd: ICD10Item) => {
+    const addProcedure = (icd: ICD9Item) => {
         if (activeType === 'primary') {
-            const others = tempDiagnoses.filter(d => d.status_dx !== 'Utama');
-            setTempDiagnoses([
+            const others = tempProcedures.filter(p => p.status_px !== 'Utama');
+            setTempProcedures([
                 {
-                    kode_penyakit: icd.kode,
-                    nama_penyakit: icd.nama,
-                    status_dx: 'Utama',
+                    kode: icd.kode,
+                    nama: icd.nama,
+                    status_px: 'Utama',
                     prioritas: 1
                 },
                 ...others
             ]);
         } else {
-            if (tempDiagnoses.some(d => d.kode_penyakit === icd.kode)) return;
-            const currentSecondary = tempDiagnoses.filter(d => d.status_dx !== 'Utama');
-            setTempDiagnoses([
-                ...tempDiagnoses,
+            if (tempProcedures.some(p => p.kode === icd.kode)) return;
+            const currentSecondary = tempProcedures.filter(p => p.status_px !== 'Utama');
+            setTempProcedures([
+                ...tempProcedures,
                 {
-                    kode_penyakit: icd.kode,
-                    nama_penyakit: icd.nama,
-                    status_dx: 'Sekunder',
-                    prioritas: currentSecondary.length + 1
+                    kode: icd.kode,
+                    nama: icd.nama,
+                    status_px: 'Sekunder',
+                    prioritas: currentSecondary.length + 2 // Ensure > 1
                 }
             ]);
         }
@@ -92,31 +95,38 @@ export default function DiagnosisModal({
         setSearchResults([]);
     };
 
-    const removeDiagnosis = (kode: string) => {
-        setTempDiagnoses(prev => prev.filter(d => d.kode_penyakit !== kode));
+    const removeProcedure = (kode: string) => {
+        setTempProcedures(prev => prev.filter(p => p.kode !== kode));
     };
 
     const handleSave = async () => {
-        const primary = tempDiagnoses.find(d => d.status_dx === 'Utama');
-        if (!primary) {
-            setError('Diagnosa Utama wajib diisi');
+        const primary = tempProcedures.find(p => p.status_px === 'Utama');
+        if (!primary && tempProcedures.length > 0) {
+            // If there's data but no primary, suggest making the first one primary or just alert
+            setError('Pilih minimal satu prosedur utama jika ada prosedur yang diinput');
             return;
         }
 
         setIsSaving(true);
         setError(null);
         try {
-            await vedikaService.syncDiagnoses(noRawat, {
-                diagnoses: tempDiagnoses.map((d, idx) => ({
-                    kode_penyakit: d.kode_penyakit,
-                    status_dx: d.status_dx as 'Utama' | 'Sekunder',
+            // Ensure priority 1 is actually the primary one
+            const sorted = [...tempProcedures].sort((a, b) => {
+                if (a.status_px === 'Utama') return -1;
+                if (b.status_px === 'Utama') return 1;
+                return a.prioritas - b.prioritas;
+            });
+
+            await vedikaService.syncProcedures(noRawat, {
+                procedures: sorted.map((p, idx) => ({
+                    kode: p.kode,
                     prioritas: idx + 1
                 }))
             });
             onSuccess();
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Gagal menyimpan diagnosa');
+            setError(err instanceof Error ? err.message : 'Gagal menyimpan prosedur');
         } finally {
             setIsSaving(false);
         }
@@ -133,7 +143,7 @@ export default function DiagnosisModal({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">
-                            Kelola Diagnosa (ICD-10)
+                            Kelola Prosedur (ICD-9-CM)
                         </h3>
                         <p className="text-xs text-gray-500 font-mono mt-0.5">{noRawat}</p>
                     </div>
@@ -149,35 +159,40 @@ export default function DiagnosisModal({
                     {/* Current List */}
                     <div className="space-y-4">
                         <section>
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Diagnosa Utama</h4>
-                            {tempDiagnoses.filter(d => d.status_dx === 'Utama').map(d => (
-                                <div key={d.kode_penyakit} className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-500/5 rounded border border-brand-100 dark:border-brand-500/20">
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Prosedur Utama</h4>
+                            {tempProcedures.filter(p => p.status_px === 'Utama').map(p => (
+                                <div key={p.kode} className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-500/5 rounded border border-brand-100 dark:border-brand-500/20">
                                     <div className="text-sm">
-                                        <span className="font-mono font-bold text-brand-700 dark:text-brand-400 mr-2">{d.kode_penyakit}</span>
-                                        <span className="text-gray-700 dark:text-gray-200">{d.nama_penyakit}</span>
+                                        <span className="font-mono font-bold text-brand-700 dark:text-brand-400 mr-2">{p.kode}</span>
+                                        <span className="text-gray-700 dark:text-gray-200">{p.nama}</span>
                                     </div>
-                                    <button onClick={() => removeDiagnosis(d.kode_penyakit)} className="text-gray-400 hover:text-red-500 px-2 font-bold text-lg">×</button>
+                                    <button onClick={() => removeProcedure(p.kode)} className="text-gray-400 hover:text-red-500 px-2 font-bold text-lg">×</button>
                                 </div>
                             ))}
-                            {tempDiagnoses.filter(d => d.status_dx === 'Utama').length === 0 && (
+                            {tempProcedures.filter(p => p.status_px === 'Utama').length === 0 && (
                                 <div className="p-3 border border-dashed border-gray-200 dark:border-gray-700 rounded text-center">
-                                    <span className="text-xs text-gray-400">Belum ada diagnosa utama</span>
+                                    <span className="text-xs text-gray-400">Belum ada prosedur utama</span>
                                 </div>
                             )}
                         </section>
 
                         <section>
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Diagnosa Sekunder</h4>
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Prosedur Sekunder</h4>
                             <div className="space-y-2">
-                                {tempDiagnoses.filter(d => d.status_dx !== 'Utama').map(d => (
-                                    <div key={d.kode_penyakit} className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700">
+                                {tempProcedures.filter(p => p.status_px !== 'Utama').map(p => (
+                                    <div key={p.kode} className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700 font-medium">
                                         <div className="text-sm">
-                                            <span className="font-mono font-bold text-gray-600 dark:text-gray-400 mr-2">{d.kode_penyakit}</span>
-                                            <span className="text-gray-600 dark:text-gray-300">{d.nama_penyakit}</span>
+                                            <span className="font-mono font-bold text-gray-600 dark:text-gray-400 mr-2">{p.kode}</span>
+                                            <span className="text-gray-600 dark:text-gray-300">{p.nama}</span>
                                         </div>
-                                        <button onClick={() => removeDiagnosis(d.kode_penyakit)} className="text-gray-400 hover:text-red-500 px-2 font-bold text-lg">×</button>
+                                        <button onClick={() => removeProcedure(p.kode)} className="text-gray-400 hover:text-red-500 px-2 font-bold text-lg">×</button>
                                     </div>
                                 ))}
+                                {tempProcedures.filter(p => p.status_px !== 'Utama').length === 0 && (
+                                    <div className="p-3 border border-dashed border-gray-200 dark:border-gray-700 rounded text-center">
+                                        <span className="text-xs text-gray-400">Belum ada prosedur sekunder</span>
+                                    </div>
+                                )}
                             </div>
                         </section>
                     </div>
@@ -205,7 +220,7 @@ export default function DiagnosisModal({
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder={activeType === 'primary' ? "Cari Diagnosa..." : "Cari Diagnosa..."}
+                                placeholder={activeType === 'primary' ? "Cari Prosedur..." : "Cari Prosedur..."}
                                 className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 rounded-xl text-sm outline-none transition-all dark:text-white ${activeType === 'primary' ? 'border-brand-500/20 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5' : 'border-gray-200 dark:border-gray-700 focus:border-gray-400 focus:ring-4 focus:ring-gray-400/5'}`}
                                 value={searchQuery}
                                 onChange={(e) => handleSearch(e.target.value)}
@@ -217,20 +232,20 @@ export default function DiagnosisModal({
                                     {isSearching ? (
                                         <div className="p-6 text-center">
                                             <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                                            <span className="text-xs text-gray-500">Mencari referensi ICD-10...</span>
+                                            <span className="text-xs text-gray-500">Mencari referensi ICD-9-CM...</span>
                                         </div>
                                     ) : searchResults.length > 0 ? (
                                         <div className="divide-y divide-gray-50 dark:divide-gray-800">
                                             {searchResults.map(res => (
                                                 <button
                                                     key={res.kode}
-                                                    onClick={() => addDiagnosis(res)}
+                                                    onClick={() => addProcedure(res)}
                                                     className="w-full text-left px-4 py-4 hover:bg-brand-50 dark:hover:bg-brand-500/5 transition-colors group"
                                                 >
                                                     <div className="flex items-center gap-3 mb-1">
                                                         <span className="font-mono font-bold text-brand-600 dark:group-hover:text-brand-400">{res.kode}</span>
                                                         <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded ${activeType === 'primary' ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-600'}`}>
-                                                            {activeType === 'primary' ? 'Primer' : 'Sekunder'}
+                                                            {activeType === 'primary' ? 'Utama' : 'Sekunder'}
                                                         </span>
                                                     </div>
                                                     <div className="text-gray-700 dark:text-gray-300 text-xs line-clamp-2 leading-relaxed">{res.nama}</div>
@@ -239,15 +254,15 @@ export default function DiagnosisModal({
                                         </div>
                                     ) : (
                                         <div className="p-6 text-center">
-                                            <div className="text-2xl mb-2"></div>
-                                            <div className="text-xs text-gray-500 font-medium italic">Diagnosa tersebut tidak ditemukan</div>
+                                            <div className="text-2xl mb-2">🔍</div>
+                                            <div className="text-xs text-gray-500 font-medium italic">Prosedur tersebut tidak ditemukan</div>
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
                         <p className="mt-2 text-[10px] text-gray-400 italic">
-                            * {activeType === 'primary' ? 'Hasil akan menggantikan Diagnosa Utama saat ini.' : 'Hasil akan ditambahkan ke daftar Diagnosa Sekunder.'}
+                            * {activeType === 'primary' ? 'Hasil akan menggantikan Prosedur Utama saat ini.' : 'Hasil akan ditambahkan ke daftar Prosedur Sekunder.'}
                         </p>
                     </div>
 
