@@ -38,6 +38,13 @@ interface FilterState {
 // HELPERS
 // =============================================================================
 
+function formatToYMD(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function getDefaultDateRange(): { from: string; to: string } {
     const now = new Date();
     const year = now.getFullYear();
@@ -45,8 +52,7 @@ function getDefaultDateRange(): { from: string; to: string } {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    const format = (d: Date) => d.toISOString().split('T')[0];
-    return { from: format(firstDay), to: format(lastDay) };
+    return { from: formatToYMD(firstDay), to: formatToYMD(lastDay) };
 }
 
 function formatDate(dateStr: string): string {
@@ -171,31 +177,25 @@ export default function VedikaIndex() {
                 {/* Filters Card */}
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                        {/* Date From */}
-                        <DatePicker
-                            id="date_from"
-                            label="Tanggal Mulai"
-                            defaultDate={filters.date_from}
-                            onChange={(dates) => {
-                                if (dates && dates[0]) {
-                                    const dateStr = dates[0].toISOString().split('T')[0];
-                                    handleFilterChange('date_from', dateStr);
-                                }
-                            }}
-                        />
-
-                        {/* Date To */}
-                        <DatePicker
-                            id="date_to"
-                            label="Tanggal Akhir"
-                            defaultDate={filters.date_to}
-                            onChange={(dates) => {
-                                if (dates && dates[0]) {
-                                    const dateStr = dates[0].toISOString().split('T')[0];
-                                    handleFilterChange('date_to', dateStr);
-                                }
-                            }}
-                        />
+                        {/* Date Range Picker */}
+                        <div className="space-y-2 lg:col-span-2">
+                            <Label htmlFor="date_range">Periode</Label>
+                            <DatePicker
+                                id="date_range"
+                                mode="range"
+                                defaultDate={[filters.date_from, filters.date_to]}
+                                onChange={(dates) => {
+                                    if (dates && dates.length === 2) {
+                                        setFilters(prev => ({
+                                            ...prev,
+                                            date_from: formatToYMD(dates[0]),
+                                            date_to: formatToYMD(dates[1]),
+                                            page: 1
+                                        }));
+                                    }
+                                }}
+                            />
+                        </div>
 
                         {/* Status */}
                         <div>
