@@ -28,11 +28,11 @@ func (j JenisPelayanan) ToDBValue() string {
 type ClaimStatus string
 
 const (
-	StatusRencana   ClaimStatus = "RENCANA"   // Episode eligible but NOT in mlite_vedika
-	StatusPengajuan ClaimStatus = "PENGAJUAN" // Episode recorded in mlite_vedika
-	StatusPerbaikan ClaimStatus = "PERBAIKAN" // Claim returned for correction
-	StatusLengkap   ClaimStatus = "LENGKAP"   // Claim completed and ready
-	StatusSetuju    ClaimStatus = "SETUJU"    // Claim approved
+	StatusRencana   ClaimStatus = "Rencana"   // Episode eligible but NOT in mlite_vedika
+	StatusPengajuan ClaimStatus = "Pengajuan" // Episode recorded in mlite_vedika
+	StatusPerbaikan ClaimStatus = "Perbaikan" // Claim returned for correction
+	StatusLengkap   ClaimStatus = "Lengkap"   // Claim completed and ready
+	StatusSetuju    ClaimStatus = "Setuju"    // Claim approved
 )
 
 // IsValid checks if the status is a known valid status.
@@ -50,6 +50,8 @@ type DashboardSummary struct {
 	Period    string         `json:"period"`
 	Rencana   ClaimCount     `json:"rencana"`
 	Pengajuan ClaimCount     `json:"pengajuan"`
+	Lengkap   ClaimCount     `json:"lengkap"`
+	Perbaikan ClaimCount     `json:"perbaikan"`
 	Maturasi  MaturasiPersen `json:"maturasi"`
 }
 

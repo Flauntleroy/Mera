@@ -4,11 +4,18 @@ import {
     AlertIcon,
     LockIcon,
     CalenderIcon,
-    TableIcon
+    TableIcon,
+    CheckCircleIcon,
+    DocsIcon,
+    GridIcon,
+    PlugInIcon,
+    UserIcon,
+    BoxCubeIcon
 } from '../../icons';
 import PageMeta from '../../components/common/PageMeta';
 import VedikaSummaryCards from './components/VedikaSummaryCards';
 import VedikaTrendChart from './components/VedikaTrendChart';
+import VedikaMaturasiChart from './components/VedikaMaturasiChart';
 import {
     vedikaService,
     isSettingsMissingError,
@@ -53,7 +60,11 @@ export default function VedikaDashboard() {
                 summary.rencana.ralan > 0 ||
                 summary.rencana.ranap > 0 ||
                 summary.pengajuan.ralan > 0 ||
-                summary.pengajuan.ranap > 0;
+                summary.pengajuan.ranap > 0 ||
+                summary.lengkap.ralan > 0 ||
+                summary.lengkap.ranap > 0 ||
+                summary.perbaikan.ralan > 0 ||
+                summary.perbaikan.ranap > 0;
 
             if (!hasData) {
                 setState({ status: 'no_data', period });
@@ -274,61 +285,43 @@ interface SuccessStateProps {
 
 function SuccessState({ summary, trend }: SuccessStateProps) {
     return (
-        <div className="space-y-6">
-
-            {/* Summary Cards */}
+        <div className="space-y-10">
+            {/* 1. Summary Cards (4 Cards) */}
             <VedikaSummaryCards summary={summary} />
 
-            {/* Trend Chart */}
-            <VedikaTrendChart data={trend} />
+            {/* 2. Maturasi Chart (Bar Chart) */}
+            <VedikaMaturasiChart maturasi={summary.maturasi} />
 
-            {/* Quick Access Menu */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-6">
-                <Link
-                    to="/vedika/index"
-                    className="group relative rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] hover:border-brand-300 dark:hover:border-brand-500/50 hover:shadow-lg transition-all duration-300 overflow-hidden"
-                >
-                    {/* Background Gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-brand-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                    <div className="relative flex items-center gap-4">
-                        <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 shadow-lg shadow-brand-500/25 group-hover:scale-110 transition-transform duration-300">
-                            <TableIcon className="w-7 h-7 text-white" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                                Index Workbench
-                            </h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Kelola data klaim BPJS
-                            </p>
-                        </div>
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 group-hover:bg-brand-500 transition-colors">
-                            <svg className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    {/* Stats Preview */}
-                    <div className="relative mt-5 pt-5 border-t border-gray-100 dark:border-gray-800">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {summary.rencana.ralan + summary.rencana.ranap}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Total Rencana</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-brand-600 dark:text-brand-400">
-                                    {summary.pengajuan.ralan + summary.pengajuan.ranap}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Total Pengajuan</p>
-                            </div>
-                        </div>
-                    </div>
-                </Link>
+            {/* 3. Navigation Grid (8 Tiles) */}
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+                    Akses Cepat
+                </h3>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 md:gap-6">
+                    {getNavigationTiles(summary.period).map((tile) => {
+                        const Icon = tile.icon;
+                        return (
+                            <Link
+                                key={tile.title}
+                                to={tile.to}
+                                className="group relative flex flex-col items-center justify-center p-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] hover:border-brand-300 dark:hover:border-brand-500/50 hover:shadow-lg transition-all duration-300"
+                            >
+                                <div className={`flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 group-hover:bg-brand-500 group-hover:scale-110 transition-all duration-300 mb-4`}>
+                                    <Icon className="w-7 h-7 text-gray-400 dark:text-gray-500 group-hover:text-white transition-colors" />
+                                </div>
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-white text-center group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                                    {tile.title}
+                                </h3>
+                                {/* Hover Indicator */}
+                                <div className="absolute bottom-2 w-1.5 h-1.5 rounded-full bg-brand-500 scale-0 group-hover:scale-100 transition-transform duration-300" />
+                            </Link>
+                        );
+                    })}
+                </div>
             </div>
+
+            {/* 4. Daily Trend Chart */}
+            <VedikaTrendChart data={trend} />
         </div>
     );
 }
@@ -336,6 +329,62 @@ function SuccessState({ summary, trend }: SuccessStateProps) {
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Generates navigation tiles with correct period filters
+ */
+function getNavigationTiles(period: string) {
+    const [year, month] = period.split('-').map(Number);
+    const firstDay = `${period}-01`;
+    const lastDayDate = new Date(year, month, 0);
+    const lastDay = `${period}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+
+    const baseUrl = '/vedika/index';
+    const filterParams = `date_from=${firstDay}&date_to=${lastDay}`;
+
+    return [
+        {
+            title: 'Index',
+            icon: TableIcon,
+            to: `${baseUrl}?${filterParams}&status=Rencana`
+        },
+        {
+            title: 'Lengkap',
+            icon: CheckCircleIcon,
+            to: `${baseUrl}?${filterParams}&status=Lengkap`
+        },
+        {
+            title: 'Pengajuan',
+            icon: DocsIcon,
+            to: `${baseUrl}?${filterParams}&status=Pengajuan`
+        },
+        {
+            title: 'Perbaikan',
+            icon: AlertIcon,
+            to: `${baseUrl}?${filterParams}&status=Perbaikan`
+        },
+        {
+            title: 'Mapping Inacbgs',
+            icon: GridIcon,
+            to: '/vedika/mapping-inacbgs'
+        },
+        {
+            title: 'Bridging Eclaim',
+            icon: PlugInIcon,
+            to: '/vedika/bridging-eclaim'
+        },
+        {
+            title: 'User Vedika',
+            icon: UserIcon,
+            to: '/vedika/users'
+        },
+        {
+            title: 'Pengaturan',
+            icon: BoxCubeIcon,
+            to: '/vedika/settings'
+        }
+    ];
+}
 
 function formatPeriod(period: string): string {
     // Format "2026-01" to "Januari 2026"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router';
+import { useSearchParams, Link } from 'react-router';
 import PageMeta from '../../components/common/PageMeta';
 import {
     vedikaService,
@@ -60,29 +60,48 @@ function formatDate(dateStr: string): string {
     return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const STATUS_CONFIG: Record<ClaimStatus, { label: string; color: string; bgColor: string }> = {
-    RENCANA: { label: 'Rencana', color: 'text-gray-700 dark:text-gray-300', bgColor: 'bg-gray-100 dark:bg-gray-700' },
-    PENGAJUAN: { label: 'Pengajuan', color: 'text-blue-700 dark:text-blue-300', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
-    PERBAIKAN: { label: 'Perbaikan', color: 'text-warning-700 dark:text-warning-300', bgColor: 'bg-warning-100 dark:bg-warning-900/30' },
-    LENGKAP: { label: 'Lengkap', color: 'text-success-700 dark:text-success-300', bgColor: 'bg-success-100 dark:bg-success-900/30' },
-    SETUJU: { label: 'Disetujui', color: 'text-brand-700 dark:text-brand-300', bgColor: 'bg-brand-100 dark:bg-brand-900/30' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+    Rencana: { label: 'Rencana', color: 'text-gray-700 dark:text-gray-300', bgColor: 'bg-gray-100 dark:bg-gray-700' },
+    Pengajuan: { label: 'Pengajuan', color: 'text-blue-700 dark:text-blue-300', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
+    Perbaikan: { label: 'Perbaikan', color: 'text-warning-700 dark:text-warning-300', bgColor: 'bg-warning-100 dark:bg-warning-900/30' },
+    Lengkap: { label: 'Lengkap', color: 'text-success-700 dark:text-success-300', bgColor: 'bg-success-100 dark:bg-success-900/30' },
+    Setuju: { label: 'Disetujui', color: 'text-brand-700 dark:text-brand-300', bgColor: 'bg-brand-100 dark:bg-brand-900/30' },
 };
+
+/**
+ * Robust status lookup that handles case-insensitivity
+ */
+function getStatusConfig(status: string) {
+    const s = (status || 'Rencana').toLowerCase();
+    // Find key that matches (case-insensitive)
+    const key = Object.keys(STATUS_CONFIG).find(k => k.toLowerCase() === s);
+    return key ? STATUS_CONFIG[key] : STATUS_CONFIG.Rencana;
+}
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
 export default function VedikaIndex() {
+    const [searchParams, setSearchParams] = useSearchParams();
     const defaultDates = getDefaultDateRange();
 
-    const [filters, setFilters] = useState<FilterState>({
-        date_from: defaultDates.from,
-        date_to: defaultDates.to,
-        claimStatus: 'RENCANA',
-        jenis: 'ralan',
-        search: '',
-        page: 1,
-        limit: 10,
+    const [filters, setFilters] = useState<FilterState>(() => {
+        const status = searchParams.get('status') as ClaimStatus || 'Rencana';
+        const dateFrom = searchParams.get('date_from') || defaultDates.from;
+        const dateTo = searchParams.get('date_to') || defaultDates.to;
+        const jenis = searchParams.get('jenis') as JenisLayanan || 'ralan';
+        const page = Number(searchParams.get('page')) || 1;
+
+        return {
+            date_from: dateFrom,
+            date_to: dateTo,
+            claimStatus: status,
+            jenis: jenis,
+            search: '',
+            page: page,
+            limit: 10,
+        };
     });
 
     const [state, setState] = useState<IndexState>({ status: 'idle' });
@@ -90,6 +109,17 @@ export default function VedikaIndex() {
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [statusModal, setStatusModal] = useState<{ isOpen: boolean; noRawat: string; currentStatus: ClaimStatus } | null>(null);
     const [batchModal, setBatchModal] = useState<{ isOpen: boolean } | null>(null);
+
+    // Sync search params with filters (optional but good for consistency)
+    useEffect(() => {
+        const params = new URLSearchParams();
+        params.set('status', filters.claimStatus);
+        params.set('date_from', filters.date_from);
+        params.set('date_to', filters.date_to);
+        params.set('jenis', filters.jenis);
+        if (filters.page > 1) params.set('page', String(filters.page));
+        setSearchParams(params, { replace: true });
+    }, [filters, setSearchParams]);
 
     const fetchData = useCallback(async () => {
         setState({ status: 'loading' });
@@ -142,11 +172,15 @@ export default function VedikaIndex() {
         fetchData(); // Refresh data after status update
     };
 
+    const isInternalData = filters.claimStatus.toLowerCase() !== 'rencana';
+    const pageTitle = isInternalData ? 'Verifikasi Workbench' : 'Index Workbench';
+    const breadcrumbTitle = isInternalData ? 'Workbench' : 'Index';
+
     return (
         <>
             <PageMeta
-                title="Index Workbench | Vedika"
-                description="Kelola data klaim BPJS - Index Workbench Vedika"
+                title={`${pageTitle} | Vedika SIMRS MERA`}
+                description={`Kelola data klaim BPJS (${filters.claimStatus}) - ${pageTitle} Vedika`}
             />
 
             <div className="space-y-6">
@@ -163,13 +197,15 @@ export default function VedikaIndex() {
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
-                            <span className="text-gray-900 dark:text-white font-medium">Index</span>
+                            <span className="text-gray-900 dark:text-white font-medium">{breadcrumbTitle}</span>
                         </nav>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Index Workbench
+                            {pageTitle}
                         </h1>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Kelola dan verifikasi data klaim BPJS
+                            {isInternalData
+                                ? `Mengelola klaim dengan status ${getStatusConfig(filters.claimStatus).label}`
+                                : 'Kelola potensi klaim (potensi data dari Khanza)'}
                         </p>
                     </div>
                 </div>
@@ -202,11 +238,11 @@ export default function VedikaIndex() {
                             <Label>Status</Label>
                             <Combobox
                                 options={[
-                                    { value: 'RENCANA', label: 'Rencana' },
-                                    { value: 'PENGAJUAN', label: 'Pengajuan' },
-                                    { value: 'PERBAIKAN', label: 'Perbaikan' },
-                                    { value: 'LENGKAP', label: 'Lengkap' },
-                                    { value: 'SETUJU', label: 'Disetujui' },
+                                    { value: 'Rencana', label: 'Rencana' },
+                                    { value: 'Pengajuan', label: 'Pengajuan' },
+                                    { value: 'Perbaikan', label: 'Perbaikan' },
+                                    { value: 'Lengkap', label: 'Lengkap' },
+                                    { value: 'Setuju', label: 'Disetujui' },
                                 ]}
                                 value={filters.claimStatus}
                                 onChange={(value) => handleFilterChange('claimStatus', value as ClaimStatus)}
@@ -382,9 +418,14 @@ export default function VedikaIndex() {
                                                     <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{item.unit}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{item.dokter}</td>
                                                     <td className="px-5 py-4">
-                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[item.status].bgColor} ${STATUS_CONFIG[item.status].color}`}>
-                                                            {STATUS_CONFIG[item.status].label}
-                                                        </span>
+                                                        {(() => {
+                                                            const config = getStatusConfig(item.status);
+                                                            return (
+                                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.color}`}>
+                                                                    {config.label}
+                                                                </span>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-5 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex items-center justify-center gap-2">

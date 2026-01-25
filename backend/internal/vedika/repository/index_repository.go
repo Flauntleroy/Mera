@@ -236,7 +236,7 @@ func (r *MySQLIndexRepository) listRencana(ctx context.Context, filter entity.In
 // listByStatus lists episodes in mlite_vedika filtered by status.
 func (r *MySQLIndexRepository) listByStatus(ctx context.Context, filter entity.IndexFilter) (*entity.PaginatedResult[entity.ClaimEpisode], error) {
 	whereClause := `
-		mv.status = ?
+		UPPER(mv.status) = UPPER(?)
 		AND mv.tgl_registrasi BETWEEN ? AND ?
 	`
 	args := []interface{}{string(filter.Status), filter.DateFrom, filter.DateTo}
@@ -273,15 +273,24 @@ func (r *MySQLIndexRepository) listByStatus(ctx context.Context, filter entity.I
 			p.nm_pasien,
 			CASE WHEN mv.jenis = '1' THEN 'ranap' ELSE 'ralan' END as jenis,
 			DATE(mv.tgl_registrasi) as tgl_pelayanan,
-			'' as unit,
-			'' as dokter,
+			CASE 
+				WHEN mv.jenis = '1' THEN COALESCE(b.nm_bangsal, '')
+				ELSE COALESCE(pol.nm_poli, '')
+			END as unit,
+			COALESCE(d.nm_dokter, '') as dokter,
 			COALESCE(pj.png_jawab, '') as cara_bayar,
 			mv.status
 		FROM mlite_vedika mv
 		INNER JOIN pasien p ON mv.no_rkm_medis = p.no_rkm_medis
 		LEFT JOIN reg_periksa rp ON mv.no_rawat = rp.no_rawat
 		LEFT JOIN penjab pj ON rp.kd_pj = pj.kd_pj
+		LEFT JOIN poliklinik pol ON rp.kd_poli = pol.kd_poli
+		LEFT JOIN dokter d ON rp.kd_dokter = d.kd_dokter
+		LEFT JOIN kamar_inap ki ON mv.no_rawat = ki.no_rawat AND mv.jenis = '1'
+		LEFT JOIN kamar km ON ki.kd_kamar = km.kd_kamar
+		LEFT JOIN bangsal b ON km.kd_bangsal = b.kd_bangsal
 		WHERE %s
+		GROUP BY mv.no_rawat
 		ORDER BY mv.tanggal DESC
 		LIMIT ? OFFSET ?
 	`, whereClause)

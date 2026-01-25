@@ -1,7 +1,7 @@
 import {
     CheckCircleIcon,
     DocsIcon,
-    PieChartIcon
+    AlertIcon
 } from '../../../icons';
 import type { DashboardSummary } from '../../../services/vedikaService';
 
@@ -12,45 +12,57 @@ interface VedikaSummaryCardsProps {
 export default function VedikaSummaryCards({ summary }: VedikaSummaryCardsProps) {
     const cards = [
         {
-            title: 'Rencana',
+            title: 'Rencana Klaim',
             description: 'Episode eligible untuk klaim',
             icon: CheckCircleIcon,
             ralan: summary.rencana.ralan,
             ranap: summary.rencana.ranap,
             total: summary.rencana.ralan + summary.rencana.ranap,
             isPercentage: false,
+            bgColor: 'bg-error-50 dark:bg-error-500/10',
+            iconColor: 'text-error-600 dark:text-error-400',
+            borderColor: 'border-error-200 dark:border-error-500/20',
+        },
+        {
+            title: 'Status Lengkap',
+            description: 'Klaim siap untuk diajukan',
+            icon: DocsIcon,
+            ralan: summary.lengkap.ralan,
+            ranap: summary.lengkap.ranap,
+            total: summary.lengkap.ralan + summary.lengkap.ranap,
+            isPercentage: false,
             bgColor: 'bg-blue-light-50 dark:bg-blue-light-500/10',
             iconColor: 'text-blue-light-600 dark:text-blue-light-400',
             borderColor: 'border-blue-light-200 dark:border-blue-light-500/20',
         },
         {
-            title: 'Pengajuan',
+            title: 'Status Pengajuan',
             description: 'Sudah diajukan ke Vedika',
             icon: DocsIcon,
             ralan: summary.pengajuan.ralan,
             ranap: summary.pengajuan.ranap,
             total: summary.pengajuan.ralan + summary.pengajuan.ranap,
             isPercentage: false,
-            bgColor: 'bg-success-50 dark:bg-success-500/10',
-            iconColor: 'text-success-600 dark:text-success-400',
-            borderColor: 'border-success-200 dark:border-success-500/20',
-        },
-        {
-            title: 'Maturasi',
-            description: 'Persentase klaim matang',
-            icon: PieChartIcon,
-            ralan: summary.maturasi.ralan,
-            ranap: summary.maturasi.ranap,
-            total: 0, // Not used for percentage
-            isPercentage: true,
             bgColor: 'bg-warning-50 dark:bg-warning-500/10',
             iconColor: 'text-warning-600 dark:text-warning-400',
             borderColor: 'border-warning-200 dark:border-warning-500/20',
         },
+        {
+            title: 'Status Perbaikan',
+            description: 'Klaim perlu diperbaiki',
+            icon: AlertIcon,
+            ralan: summary.perbaikan.ralan,
+            ranap: summary.perbaikan.ranap,
+            total: summary.perbaikan.ralan + summary.perbaikan.ranap,
+            isPercentage: false,
+            bgColor: 'bg-success-50 dark:bg-success-500/10',
+            iconColor: 'text-success-600 dark:text-success-400',
+            borderColor: 'border-success-200 dark:border-success-500/20',
+        },
     ];
 
     return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
             {cards.map((card) => {
                 const Icon = card.icon;
                 return (

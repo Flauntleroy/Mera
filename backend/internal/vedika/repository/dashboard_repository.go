@@ -15,6 +15,7 @@ type DashboardRepository interface {
 	CountRencanaRalan(ctx context.Context, period string, carabayar []string) (int, error)
 	CountRencanaRanap(ctx context.Context, period string, carabayar []string) (int, error)
 	CountPengajuanByJenis(ctx context.Context, period string, jenis entity.JenisPelayanan) (int, error)
+	CountByStatusAndJenis(ctx context.Context, period string, status entity.ClaimStatus, jenis entity.JenisPelayanan) (int, error)
 	GetDailyTrend(ctx context.Context, period string, carabayar []string) ([]entity.DashboardTrendItem, error)
 }
 
@@ -64,7 +65,7 @@ func (r *MySQLDashboardRepository) CountRencanaRalan(ctx context.Context, period
 		WHERE pj.kd_pj IN (%s)
 		  AND DATE_FORMAT(rp.tgl_registrasi, '%%Y-%%m') = ?
 		  AND rp.status_lanjut = 'Ralan'
-		  AND rp.stts != 'Batal'
+		  AND UPPER(rp.stts) != 'BATAL'
 		  AND mv.no_rawat IS NULL
 	`, buildPlaceholders(len(carabayar)))
 
@@ -111,15 +112,23 @@ func (r *MySQLDashboardRepository) CountRencanaRanap(ctx context.Context, period
 
 // CountPengajuanByJenis counts episodes in mlite_vedika by jenis.
 func (r *MySQLDashboardRepository) CountPengajuanByJenis(ctx context.Context, period string, jenis entity.JenisPelayanan) (int, error) {
+	// For backward compatibility or general count, but we can just use the new one with PENGAJUAN if needed.
+	// Actually, the user wants "Pengajuan" to be status-specific.
+	return r.CountByStatusAndJenis(ctx, period, entity.StatusPengajuan, jenis)
+}
+
+// CountByStatusAndJenis counts episodes in mlite_vedika by status and jenis.
+func (r *MySQLDashboardRepository) CountByStatusAndJenis(ctx context.Context, period string, status entity.ClaimStatus, jenis entity.JenisPelayanan) (int, error) {
 	query := `
 		SELECT COUNT(*) FROM mlite_vedika
 		WHERE DATE_FORMAT(tgl_registrasi, '%Y-%m') = ?
+		  AND UPPER(status) = UPPER(?)
 		  AND jenis = ?
 	`
 
 	var count int
-	if err := r.db.QueryRowContext(ctx, query, period, jenis.ToDBValue()).Scan(&count); err != nil {
-		return 0, fmt.Errorf("failed to count pengajuan: %w", err)
+	if err := r.db.QueryRowContext(ctx, query, period, string(status), jenis.ToDBValue()).Scan(&count); err != nil {
+		return 0, fmt.Errorf("failed to count by status and jenis: %w", err)
 	}
 
 	return count, nil

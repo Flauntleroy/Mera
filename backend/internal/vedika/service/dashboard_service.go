@@ -47,70 +47,100 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, actor audit.
 
 	// Execute all count queries in parallel
 	var (
-		wg                sync.WaitGroup
-		rencanaRalan      int
-		rencanaRanap      int
-		pengajuanRalan    int
-		pengajuanRanap    int
-		errRencanaRalan   error
-		errRencanaRanap   error
-		errPengajuanRalan error
-		errPengajuanRanap error
+		wg      sync.WaitGroup
+		rencana entity.ClaimCount
+		pen     entity.ClaimCount
+		lenk    entity.ClaimCount
+		perb    entity.ClaimCount
+		setuju  entity.ClaimCount
+
+		errRenRalan error
+		errRenRanap error
+		errPenRalan error
+		errPenRanap error
+		errLenRalan error
+		errLenRanap error
+		errPerRalan error
+		errPerRanap error
+		errSetRalan error
+		errSetRanap error
 	)
 
-	wg.Add(4)
+	wg.Add(10)
 
-	// Count rencana ralan
+	// Rencana
 	go func() {
 		defer wg.Done()
-		rencanaRalan, errRencanaRalan = s.dashboardRepo.CountRencanaRalan(ctx, period, carabayar)
+		rencana.Ralan, errRenRalan = s.dashboardRepo.CountRencanaRalan(ctx, period, carabayar)
+	}()
+	go func() {
+		defer wg.Done()
+		rencana.Ranap, errRenRanap = s.dashboardRepo.CountRencanaRanap(ctx, period, carabayar)
 	}()
 
-	// Count rencana ranap
+	// Pengajuan
 	go func() {
 		defer wg.Done()
-		rencanaRanap, errRencanaRanap = s.dashboardRepo.CountRencanaRanap(ctx, period, carabayar)
+		pen.Ralan, errPenRalan = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusPengajuan, entity.JenisRalan)
+	}()
+	go func() {
+		defer wg.Done()
+		pen.Ranap, errPenRanap = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusPengajuan, entity.JenisRanap)
 	}()
 
-	// Count pengajuan ralan
+	// Lengkap
 	go func() {
 		defer wg.Done()
-		pengajuanRalan, errPengajuanRalan = s.dashboardRepo.CountPengajuanByJenis(ctx, period, entity.JenisRalan)
+		lenk.Ralan, errLenRalan = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusLengkap, entity.JenisRalan)
+	}()
+	go func() {
+		defer wg.Done()
+		lenk.Ranap, errLenRanap = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusLengkap, entity.JenisRanap)
 	}()
 
-	// Count pengajuan ranap
+	// Perbaikan
 	go func() {
 		defer wg.Done()
-		pengajuanRanap, errPengajuanRanap = s.dashboardRepo.CountPengajuanByJenis(ctx, period, entity.JenisRanap)
+		perb.Ralan, errPerRalan = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusPerbaikan, entity.JenisRalan)
+	}()
+	go func() {
+		defer wg.Done()
+		perb.Ranap, errPerRanap = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusPerbaikan, entity.JenisRanap)
+	}()
+
+	// Setuju
+	go func() {
+		defer wg.Done()
+		setuju.Ralan, errSetRalan = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusSetuju, entity.JenisRalan)
+	}()
+	go func() {
+		defer wg.Done()
+		setuju.Ranap, errSetRanap = s.dashboardRepo.CountByStatusAndJenis(ctx, period, entity.StatusSetuju, entity.JenisRanap)
 	}()
 
 	wg.Wait()
 
-	// Check for errors
-	if errRencanaRalan != nil {
-		return nil, fmt.Errorf("failed to count rencana ralan: %w", errRencanaRalan)
-	}
-	if errRencanaRanap != nil {
-		return nil, fmt.Errorf("failed to count rencana ranap: %w", errRencanaRanap)
-	}
-	if errPengajuanRalan != nil {
-		return nil, fmt.Errorf("failed to count pengajuan ralan: %w", errPengajuanRalan)
-	}
-	if errPengajuanRanap != nil {
-		return nil, fmt.Errorf("failed to count pengajuan ranap: %w", errPengajuanRanap)
+	// Error handling
+	if errRenRalan != nil || errRenRanap != nil || errPenRalan != nil || errPenRanap != nil ||
+		errLenRalan != nil || errLenRanap != nil || errPerRalan != nil || errPerRanap != nil ||
+		errSetRalan != nil || errSetRanap != nil {
+		return nil, fmt.Errorf("failed to fetch dashboard counts")
 	}
 
 	// Calculate maturasi
-	// Total rencana = rencana (not submitted) + pengajuan (already submitted)
-	totalRencanaRalan := rencanaRalan + pengajuanRalan
-	totalRencanaRanap := rencanaRanap + pengajuanRanap
+	// Total processed = pengajuan + lengkap + perbaikan + setuju
+	pengajuanTotalRalan := pen.Ralan + lenk.Ralan + perb.Ralan + setuju.Ralan
+	pengajuanTotalRanap := pen.Ranap + lenk.Ranap + perb.Ranap + setuju.Ranap
+
+	totalRencanaRalan := rencana.Ralan + pengajuanTotalRalan
+	totalRencanaRanap := rencana.Ranap + pengajuanTotalRanap
 
 	var maturasi entity.MaturasiPersen
 	if totalRencanaRalan > 0 {
-		maturasi.Ralan = float64(pengajuanRalan) / float64(totalRencanaRalan) * 100
+		maturasi.Ralan = float64(pengajuanTotalRalan) / float64(totalRencanaRalan) * 100
 	}
 	if totalRencanaRanap > 0 {
-		maturasi.Ranap = float64(pengajuanRanap) / float64(totalRencanaRanap) * 100
+		maturasi.Ranap = float64(pengajuanTotalRanap) / float64(totalRencanaRanap) * 100
 	}
 
 	summary := &entity.DashboardSummary{
@@ -119,11 +149,10 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, actor audit.
 			Ralan: totalRencanaRalan,
 			Ranap: totalRencanaRanap,
 		},
-		Pengajuan: entity.ClaimCount{
-			Ralan: pengajuanRalan,
-			Ranap: pengajuanRanap,
-		},
-		Maturasi: maturasi,
+		Pengajuan: pen,
+		Lengkap:   lenk,
+		Perbaikan: perb,
+		Maturasi:  maturasi,
 	}
 
 	// Write audit log (async, non-blocking)

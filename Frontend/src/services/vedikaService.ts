@@ -21,6 +21,8 @@ export interface DashboardSummary {
     period: string;
     rencana: ClaimCount;
     pengajuan: ClaimCount;
+    lengkap: ClaimCount;
+    perbaikan: ClaimCount;
     maturasi: MaturasiPersen;
 }
 
@@ -36,6 +38,8 @@ export interface TrendItem {
     date: string;
     rencana: ClaimCount;
     pengajuan: ClaimCount;
+    lengkap: ClaimCount;
+    perbaikan: ClaimCount;
 }
 
 export interface TrendResponse {
@@ -620,12 +624,16 @@ export const vedikaService = {
         if (params.search) searchParams.set('search', params.search);
 
         const url = `${API_ENDPOINTS.VEDIKA.INDEX}?${searchParams.toString()}`;
-        return apiRequest<IndexListResponse>(url, {}, { showGlobalLoading: false });
+        const response = await apiRequest<IndexListResponse>(url, {}, { showGlobalLoading: false });
+
+        return response;
     },
 
     // Claim Detail (Button click - needs global loading)
     getClaimDetail: async (noRawat: string): Promise<ClaimDetailResponse> => {
-        return apiRequest<ClaimDetailResponse>(API_ENDPOINTS.VEDIKA.CLAIM(noRawat));
+        const response = await apiRequest<ClaimDetailResponse>(API_ENDPOINTS.VEDIKA.CLAIM(noRawat));
+
+        return response;
     },
 
     // FULL Claim Detail (Button click - needs global loading)
